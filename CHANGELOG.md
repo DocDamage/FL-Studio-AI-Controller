@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased v0.5 — waveform navigation and section looping
+
+Added verified, read-only per-channel waveforms for existing level-matched Audio
+reviews, click/slider seeking, numeric loop ranges, and measured-window looping.
+Both sides share time/amplitude scales; loop selection never changes audio files.
+Hardened player switching so Pause/Stop cancels pending playback, a seek during
+loading is retained, and reopening/reverification clears stale previews and blobs.
+
+Validation: 621 Python tests (55 new waveform cases); 16 new browser checks plus
+16 Audio review and 9 acceptance-checklist regressions. Synthetic audio only;
+browser navigation used the documented direct-Service fallback. Real authenticated
+HTTP, companion/MCP process smoke and package checks are separate evidence.
+See [Waveform review](docs/WAVEFORM_REVIEW.md). No additional dependency, MCP tool,
+DAW authority, automatic FL render, or native-host qualification is introduced.
+
 ## Unreleased v0.5 — native export acceptance workbench
 
 Added a persistent, revision-checked native export checklist in Connection & setup.
