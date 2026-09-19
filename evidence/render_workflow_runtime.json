@@ -1,0 +1,12 @@
+{
+  "app_version": "0.4.0",
+  "app_process": "passed_simulator",
+  "diagnostics_process": "passed; simulator correctly returned not-ready exit 2",
+  "mcp_stdio": "passed; 19 tools; JSON-RPC-only stdout",
+  "diagnostics_control_plans_created": 0,
+  "plugin_scan_via_mcp_process": "passed; observed high index 2049, no control plans created",
+  "audio_review_process": "passed; real WAV imports, 3 outputs and persisted decision; zero DAW plans",
+  "manual_export_intake": "passed; real folder capture, persisted provenance, pathless MCP status/cancel",
+  "live_fl_tested": false,
+  "windows_process_tested": false
+}

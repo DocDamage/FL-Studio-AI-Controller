@@ -1,0 +1,27 @@
+{
+  "checks": [
+    "Historical imports appear without invented dates",
+    "Labels and notes are stored as inert text, not HTML",
+    "Case-insensitive note search and source filters combine correctly",
+    "List refresh does not erase unsaved notes",
+    "Stale note saves are refused; explicit reload restores the saved revision",
+    "Service restart preserves annotations without rearming folder access",
+    "Verification hashes the stored copy",
+    "Library input reaches the actual audio analyzer",
+    "Saved inputs reach baseline/candidate selectors",
+    "Changing either selector invalidates range consent",
+    "Actual library pair creates measured A/B outputs",
+    "Failed re-verification clears the earlier success display",
+    "390px library layout stays within the viewport",
+    "Zero DAW commands or prepared plans",
+    "No JavaScript page errors"
+  ],
+  "page_errors": [],
+  "live_fl_tested": false,
+  "platform": "linux",
+  "transport": "direct_service_dom_fallback",
+  "browser_policy_changed": false,
+  "service_restart_tested": true,
+  "physical_audio_listening_performed": false,
+  "fixture": "Synthetic WAV inputs only"
+}

@@ -34,3 +34,8 @@
 #review-note{width:100%;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;resize:vertical}
 #review-revision{align-self:center}#review-result summary{cursor:pointer}
 @media(max-width:680px){.review-history-row{align-items:flex-start;flex-direction:column}#review-result .pill{white-space:normal}}
+
+/* User labels and full hashes must wrap without widening the bounce library. */
+#bounce-library .technical-note, #bounce-library strong, #bounce-name {overflow-wrap:anywhere;}
+#bounce-library .two-cols > div {min-width:0;}
+#bounce-note {display:block;width:100%;min-height:110px;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;resize:vertical;box-sizing:border-box;}

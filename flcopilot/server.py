@@ -1,4 +1,4 @@
-"""Authenticated loopback UI. No CORS wildcard, arbitrary path reads, or remote listeners."""
+"""Authenticated loopback UI. Explicit folder consent; no remote listeners or CORS wildcard."""
 from __future__ import annotations
 import hmac
 import json
@@ -65,11 +65,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             path=urlsplit(self.path).path
-            if path in ("/","/app.js","/workbench.js","/review.js","/style.css"):
+            if path in ("/","/app.js","/workbench.js","/review.js","/render.js","/bounces.js","/style.css"):
                 self._secure(auth=False)
-                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/style.css":"style.css"}[path]
+                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/render.js":"render.js","/bounces.js":"bounces.js","/style.css":"style.css"}[path]
                 data=files("flcopilot").joinpath("web",name).read_bytes()
-                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
+                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","render.js":"text/javascript; charset=utf-8","bounces.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
                 self._headers(200,kind,len(data)); self.wfile.write(data); return
             self._secure()
             s=self.server.service; q=parse_qs(urlsplit(self.path).query)
@@ -77,6 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=="/api/capabilities": return self._json(s.capabilities())
             if path=="/api/history": return self._json(s.journal.history())
             if path=="/api/reviews": return self._json(s.reviews.history())
+            if path=="/api/render-watch": return self._json(s.render_watch_status())
             if path=="/api/assets": return self._json(s.assets.list())
             if path=="/api/parameters": return self._json(s.parameters(int(q["track"][0]),int(q["slot"][0])))
             if path.startswith("/api/jobs/"): return self._json(s.jobs.get(path.rsplit("/",1)[-1]))
@@ -101,6 +102,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(s.assets.import_stream(self.rfile,n,name))
             data=self._body()
             if path=="/api/inspect": result=s.jobs.submit("Inspecting FL session",s.inspect)
+            elif path=="/api/bounces": result=s.bounces.list(data)
+            elif path=="/api/bounce-get": result=s.bounces.get(data)
+            elif path=="/api/bounce-edit": result=s.bounces.edit(data)
+            elif path=="/api/bounce-verify": result=s.jobs.submit("Verifying stored bounce bytes",lambda:s.bounces.verify(data))
+            elif path=="/api/render-watch": result=s.render_watch(data)
+            elif path=="/api/render-watch-cancel": result=s.render_watch_cancel(data)
             elif path=="/api/settings": result=s.settings(data)
             elif path=="/api/prepare": result=s.prepare(data)
             elif path=="/api/prompt":

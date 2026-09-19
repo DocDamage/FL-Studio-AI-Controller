@@ -10,7 +10,7 @@ from flcopilot.service import Service
 from flcopilot.demo import DemoAdapter
 from flcopilot.contracts import PlanError
 from flcopilot.assets import atomic_json
-from flcopilot.mcp_relay import handle,tool_call
+from flcopilot.mcp_relay import handle,tool_call,TOOLS
 
 @pytest.fixture
 def app(tmp_path):
@@ -94,7 +94,7 @@ def test_mcp_initialize_and_tools(app):
     s,srv,path=app
     r=handle(path,{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}})
     assert r["result"]["serverInfo"]["name"]=="fl-studio-ai-copilot"
-    assert len(handle(path,{"jsonrpc":"2.0","id":2,"method":"tools/list"})["result"]["tools"])==17
+    assert len(handle(path,{"jsonrpc":"2.0","id":2,"method":"tools/list"})["result"]["tools"])==len(TOOLS)
     assert handle(path,{"jsonrpc":"2.0","method":"notifications/initialized"}) is None
 
 def test_mcp_uses_same_app_executor(app):

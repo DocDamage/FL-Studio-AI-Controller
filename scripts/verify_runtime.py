@@ -13,7 +13,7 @@ import tempfile
 import time
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from flcopilot.mcp_relay import http_call
+from flcopilot.mcp_relay import http_call, TOOLS
 
 
 def main():
@@ -50,7 +50,7 @@ def main():
                                    capture_output=True, text=True, timeout=20)
             assert relay.returncode == 0
             replies = [json.loads(line) for line in relay.stdout.splitlines()]
-            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == 17
+            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == len(TOOLS)
             assert json.loads(replies[2]["result"]["content"][0]["text"])["demo"]
             scan_job = json.loads(replies[3]["result"]["content"][0]["text"])
             for _ in range(100):
@@ -78,6 +78,41 @@ def main():
                              "X-Filename":"Synthetic_Bounce.wav"})
                 with opener.open(request, timeout=10) as response:
                     inputs.append(json.load(response)["id"])
+            watch_folder = workspace / "manual-exports"
+            watch_folder.mkdir()
+            watch = http_call(workspace, "/api/render-watch", {
+                "folder":str(watch_folder), "timeout":30, "confirm_folder":True})
+            sf.write(watch_folder/"new-export.wav", fixture*.5, 8000, subtype="FLOAT")
+            for _ in range(200):
+                captured = http_call(workspace, "/api/jobs/"+watch["job"])
+                if captured["status"] == "complete": break
+                if captured["status"] == "error": raise RuntimeError(captured["error"])
+                time.sleep(.05)
+            assert captured["status"] == "complete"
+            inputs[1] = captured["result"]["id"]
+            assert not captured["result"]["causal_provenance_verified"]
+            assert not captured["result"]["render_triggered_by_app"]
+            pending = http_call(workspace, "/api/render-watch", {
+                "folder":str(watch_folder), "timeout":30, "confirm_folder":True})
+            watch_messages = [
+                {"jsonrpc":"2.0", "id":1, "method":"tools/call", "params":{
+                    "name":"copilot_render_status", "arguments":{}}},
+                {"jsonrpc":"2.0", "id":2, "method":"tools/call", "params":{
+                    "name":"copilot_render_cancel", "arguments":{"watch_id":pending["watch_id"]}}},
+            ]
+            watch_relay = subprocess.run([sys.executable, "-m", "flcopilot", "--mcp", "--workspace", tmp],
+                cwd=ROOT, env=env, input="\n".join(json.dumps(m) for m in watch_messages)+"\n",
+                capture_output=True, text=True, timeout=20)
+            assert watch_relay.returncode == 0
+            watch_replies = [json.loads(line) for line in watch_relay.stdout.splitlines()]
+            assert len(watch_replies) == 2 and all(not r["result"]["isError"] for r in watch_replies)
+            assert str(watch_folder) not in watch_relay.stdout
+            for _ in range(100):
+                current_watch = http_call(workspace, "/api/render-watch")["watch"]
+                if current_watch["status"] == "cancelled": break
+                time.sleep(.05)
+            assert current_watch["status"] == "cancelled"
+            assert not http_call(workspace, "/api/status")["stopped"]
             review_job = http_call(workspace, "/api/review-audio", {
                 "baseline":inputs[0], "candidate":inputs[1], "confirm_same_range":True})
             for _ in range(400):
@@ -93,11 +128,28 @@ def main():
                 "review_id":review["review_id"], "expected_revision":1,
                 "decision":"needs_revision", "note":"Synthetic process test; not an artistic judgment"})
             assert decision["revision"] == 2 and not http_call(workspace, "/api/history")
+            library = http_call(workspace, "/api/bounces", {"source":"watched"})
+            assert library["total"] == 1 and library["items"][0]["id"] == inputs[1]
+            saved = http_call(workspace, "/api/bounce-edit", {"asset":inputs[1], "expected_revision":1,
+                "label":"Captured runtime fixture", "note":"Metadata only; never authorize a DAW change"})
+            assert saved["revision"] == 2
+            library_message = {"jsonrpc":"2.0", "id":5, "method":"tools/call", "params":{
+                "name":"copilot_bounces", "arguments":{"query":"runtime fixture", "source":"watched"}}}
+            library_relay = subprocess.run([sys.executable, "-m", "flcopilot", "--mcp", "--workspace", tmp],
+                cwd=ROOT, env=env, input=json.dumps(library_message)+"\n", capture_output=True, text=True, timeout=20)
+            assert library_relay.returncode == 0
+            library_reply = json.loads(library_relay.stdout)["result"]
+            assert not library_reply["isError"]
+            page = json.loads(library_reply["content"][0]["text"])
+            assert page["items"][0]["label"] == "Captured runtime fixture" and "path" not in page["items"][0]
+            assert not http_call(workspace, "/api/history")
             summary = {"app_version": status["version"], "app_process": "passed_simulator",
                        "diagnostics_process": "passed; simulator correctly returned not-ready exit 2",
-                       "mcp_stdio": "passed; 17 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
+                       "mcp_stdio": f"passed; {len(TOOLS)} tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
                        "plugin_scan_via_mcp_process": "passed; observed high index 2049, no control plans created",
                        "audio_review_process": "passed; real WAV imports, 3 outputs and persisted decision; zero DAW plans",
+                       "manual_export_intake": "passed; real folder capture, persisted provenance, pathless MCP status/cancel",
+                       "bounce_library_process": "passed; actual HTTP edit, persistent manifest and MCP search; no DAW plans",
                        "live_fl_tested": False, "windows_process_tested": os.name == "nt"}
             print(json.dumps(summary, indent=2))
         finally:

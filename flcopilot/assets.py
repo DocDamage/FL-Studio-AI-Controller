@@ -4,9 +4,10 @@ import hashlib
 import json
 import os
 import threading
+import time
 import uuid
 from pathlib import Path
-from .contracts import PlanError
+from .contracts import PlanError, Stopped
 
 AUDIO_SUFFIXES={".wav",".wave",".flac",".aif",".aiff",".ogg",".oga",".mp3",".m4a",".aac"}
 MAX_UPLOAD=300*1024*1024
@@ -30,7 +31,13 @@ class AssetStore:
         self.imports.mkdir(exist_ok=True); self.exports.mkdir(exist_ok=True)
         self.manifest=self.root/"assets.json"; self.lock=threading.RLock()
         self.data=json.loads(self.manifest.read_text()) if self.manifest.exists() else {}
-    def import_stream(self,stream,length,name):
+    def import_stream(self,stream,length,name,*,validate=None,stop=None,metadata=None):
+        # Internal validation hooks run before registration, never after publication.
+        if metadata and set(metadata) & {"id","name","path","sha256","kind","imported_at","bytes","annotation"}:
+            raise PlanError("Input metadata cannot replace asset identity")
+        def check_stop():
+            if stop is not None and stop.is_set(): raise Stopped("Audio import cancelled")
+        check_stop()
         suffix=Path(name.replace("\\","/")).suffix.lower()
         if suffix not in AUDIO_SUFFIXES: raise PlanError("Import WAV, FLAC, AIFF, OGG, MP3, M4A, or AAC audio.")
         if type(length)!=int or not 1<=length<=MAX_UPLOAD: raise PlanError("Audio upload must be 1 byte to 300 MiB")
@@ -39,13 +46,19 @@ class AssetStore:
         try:
             with path.open("xb") as out:
                 while remaining:
+                    check_stop()
                     block=stream.read(min(1024*1024,remaining))
                     if not block: raise PlanError("Upload ended before the declared size")
                     out.write(block); remaining-=len(block)
-            record={"id":asset,"name":Path(name.replace("\\","/")).name[:180],
-                "path":str(path.relative_to(self.root)),"sha256":file_hash(path),"kind":"input"}
+            if validate is not None: validate(path)
+            check_stop()
+            record={**(metadata or {}),"id":asset,"name":Path(name.replace("\\","/")).name[:180],
+                "path":str(path.relative_to(self.root)),"sha256":file_hash(path),"kind":"input","imported_at":time.time(),"bytes":length}
             with self.lock:
-                self.data[asset]=record; atomic_json(self.manifest,self.data)
+                check_stop()
+                updated={**self.data,asset:record}
+                atomic_json(self.manifest,updated)
+                self.data=updated
             return record
         except Exception:
             path.unlink(missing_ok=True); raise
