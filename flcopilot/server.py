@@ -65,11 +65,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             path=urlsplit(self.path).path
-            if path in ("/","/app.js","/workbench.js","/review.js","/render.js","/bounces.js","/acceptance.js","/acceptance.css","/style.css"):
+            if path in ("/","/app.js","/workbench.js","/review.js","/render.js","/bounces.js","/acceptance.js","/acceptance.css","/waveform.js","/waveform.css","/style.css"):
                 self._secure(auth=False)
-                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/render.js":"render.js","/bounces.js":"bounces.js","/acceptance.js":"acceptance.js","/acceptance.css":"acceptance.css","/style.css":"style.css"}[path]
+                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/render.js":"render.js","/bounces.js":"bounces.js","/acceptance.js":"acceptance.js","/acceptance.css":"acceptance.css","/waveform.js":"waveform.js","/waveform.css":"waveform.css","/style.css":"style.css"}[path]
                 data=files("flcopilot").joinpath("web",name).read_bytes()
-                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","render.js":"text/javascript; charset=utf-8","bounces.js":"text/javascript; charset=utf-8","acceptance.js":"text/javascript; charset=utf-8","acceptance.css":"text/css; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
+                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","render.js":"text/javascript; charset=utf-8","bounces.js":"text/javascript; charset=utf-8","acceptance.js":"text/javascript; charset=utf-8","acceptance.css":"text/css; charset=utf-8","waveform.js":"text/javascript; charset=utf-8","waveform.css":"text/css; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
                 self._headers(200,kind,len(data)); self.wfile.write(data); return
             self._secure()
             s=self.server.service; q=parse_qs(urlsplit(self.path).query)
@@ -133,6 +133,7 @@ class Handler(BaseHTTPRequestHandler):
                 if set(data)!={"a","b"}: raise PlanError("Expected baseline a and candidate b")
                 result=s.jobs.submit("Comparing audio measurements",lambda:s.compare(data["a"],data["b"]))
             elif path=="/api/review-audio": result=s.jobs.submit("Checking exports and rendering level-matched A/B",lambda:s.review_audio(data))
+            elif path=="/api/review-waveform": result=s.jobs.submit("Verifying and reading audition waveforms",lambda:s.review_waveform(data))
             elif path=="/api/review-get": result=s.review_get(data)
             elif path=="/api/review-decision": result=s.review_decision(data)
             elif path=="/api/midi": result=s.create_midi(data)

@@ -178,6 +178,13 @@ class Service:
                     self.assets.discard_outputs({r["id"] for r in records})
                 shutil.rmtree(folder,ignore_errors=True)
                 raise
+    def review_waveform(self,data):
+        import json
+        from .review_waveform import WaveformRequest, build_waveforms
+        request=WaveformRequest.model_validate_json(json.dumps(data))
+        with self.audio_lock:
+            review=self.reviews.get(request.review_id)
+            return build_waveforms(self.assets,review,request.bins,self.executor.stop_event)
     def review_decision(self,data):
         import json
         from .review_contracts import ReviewDecision

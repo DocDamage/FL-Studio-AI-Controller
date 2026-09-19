@@ -1,0 +1,26 @@
+{
+  "transport": "direct-Service DOM fallback",
+  "checks": [
+    "Real matched WAVs produce stereo peak/RMS envelopes on a shared amplitude scale",
+    "Seeking before the first audio load is retained without autoplay",
+    "Applied loop wraps the current player without modifying audio",
+    "A/B switching retains the loop and approximate position",
+    "Invalid short ranges cannot leave a previous loop active",
+    "Measured time windows become loops without starting playback",
+    "390px controls and canvas stay within the viewport",
+    "Whole-file loop continues across the media end boundary",
+    "Global Stop pauses audition and disables repeat",
+    "Opening another review clears loops, envelopes and cached audio URLs",
+    "A seek during an in-flight audio load wins over the old position",
+    "Pause cancels a pending side switch without late autoplay",
+    "A late waveform response cannot populate a different review",
+    "Failed reverification clears stale waveforms and cached playback blobs",
+    "Blocked review withholds waveform and looping controls",
+    "Navigation and loops create no assets, decisions, plans or DAW writes"
+  ],
+  "page_errors": [],
+  "fixture": "Synthetic exported audio",
+  "native_fl_tested": false,
+  "physical_audio_listening_performed": false,
+  "browser_policy_changed": false
+}

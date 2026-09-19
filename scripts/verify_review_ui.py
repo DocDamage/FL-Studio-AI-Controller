@@ -6,6 +6,7 @@ browser's explicit administrator-policy navigation error; HTTP tests are separat
 import io
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -67,13 +68,15 @@ def main():
                     if 'ERR_BLOCKED_BY_ADMINISTRATOR' not in str(exc):raise
                     transport='direct_service_dom_fallback';navigation='blocked_by_environment_administrator'
                     html=(ROOT/'flcopilot/web/index.html').read_text()
-                    html=html.replace('<link rel="stylesheet" href="/style.css">','')
-                    for name in ['app','workbench','review','render','bounces']:
-                        html=html.replace(f'<script src="/{name}.js" defer></script>','')
+                    modules=re.findall(r'<script src="/([a-z]+)\.js" defer></script>',html)
+                    styles=re.findall(r'<link rel="stylesheet" href="/([a-z]+)\.css">',html)
+                    html=re.sub(r'<script src="/[a-z]+\.js" defer></script>','',html)
+                    html=re.sub(r'<link rel="stylesheet" href="/[a-z]+\.css">','',html)
                     # A new blank page avoids a forbidden error-page origin.
                     page.close();page=browser.new_page(viewport={'width':1512,'height':1100})
                     page.on('pageerror',lambda e:errors.append(str(e)))
-                    page.set_content(html);page.add_style_tag(content=(ROOT/'flcopilot/web/style.css').read_text())
+                    page.set_content(html)
+                    for name in styles:page.add_style_tag(content=(ROOT/f'flcopilot/web/{name}.css').read_text())
                     page.expose_function('__reviewRequest',request)
                     page.evaluate('''()=>{
                         Object.defineProperty(window,'sessionStorage',{value:{getItem:()=>"test-token",setItem:()=>{}}});
@@ -83,7 +86,7 @@ def main():
                                 blob:async()=>new Blob([Uint8Array.from(atob(r.binary),c=>c.charCodeAt(0))],{type:'audio/wav'})};
                         };
                     }''')
-                    for name in ['app','workbench','review','render','bounces']:
+                    for name in modules:
                         page.add_script_tag(content=(ROOT/f'flcopilot/web/{name}.js').read_text())
                 page.wait_for_function('status && snapshot')
                 page.locator('[data-tab="review"]').click()

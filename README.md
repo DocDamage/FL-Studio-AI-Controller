@@ -22,6 +22,20 @@ claimed. See [upgrade instructions](docs/UPGRADE_v0.4.0.md).
 read-only parameter discovery and observation-bound changes in displayed units.
 The [v0.3 upgrade notes](docs/UPGRADE_v0.3.0.md) remain available for historical context.
 
+## Current unreleased v0.5 additions
+
+**Audio review now has [waveform navigation and section looping](docs/WAVEFORM_REVIEW.md).**
+Open a ready review and load verified waveforms, seek the same passage on either
+side, or repeat a numeric range or measured time window. A/B uses the original
+level-matched files with separate stereo lanes and a shared scale. Loops are
+approximate browser playback, not edits to your audio or FL project.
+
+The merged [manual export intake](docs/FL_RENDER_INTAKE.md),
+[persistent bounce library](docs/BOUNCE_LIBRARY.md), and
+[native export test checklist](docs/ACCEPTANCE_WORKBENCH.md) remain available.
+Package metadata is still 0.4.0; this is development source, not a qualified v0.5
+Windows release. See [waveform validation](docs/WAVEFORM_VALIDATION.md).
+
 ## Start on Windows
 
 Extract the whole ZIP. Install **64-bit Python 3.13**, including the `py` launcher.
@@ -219,7 +233,7 @@ Weights and a llama.cpp executable are not bundled or downloaded automatically.
 The managed option avoids a separately maintained Ollama service, but is not a
 self-contained preinstalled ML distribution.
 
-An existing MCP-capable coding/assistant client can use the seventeen-tool stdio relay:
+An existing MCP-capable coding/assistant client can use the twenty-tool stdio relay:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\write_mcp_config.py

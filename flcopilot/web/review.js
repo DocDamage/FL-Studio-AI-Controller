@@ -1,10 +1,27 @@
 "use strict";
 // Measurements and listening choices are separate; this workspace has no DAW writer.
 let reviewCurrent=null, reviewURLs={}, reviewGeneration=0, reviewSide=null, reviewSwitch=0;
+let reviewPosition=0, reviewLoading=false, reviewAbortLoad=null;
+function reviewPause(){
+    reviewSwitch++;if(reviewAbortLoad)reviewAbortLoad();reviewAbortLoad=null;
+    reviewLoading=false;$("review-player").pause();
+    window.dispatchEvent(new Event("flcopilot-review-paused"));
+}
+function reviewSeekTo(seconds){
+    if(!reviewCurrent||reviewCurrent.report.status!=="ready"||!Number.isFinite(seconds))return;
+    const m=reviewCurrent.report.baseline, end=m.frames/m.sample_rate;
+    reviewPosition=Math.max(0,Math.min(seconds,Math.max(0,end-.001)));
+    const player=$("review-player");
+    if(!reviewLoading&&player.readyState>=1)player.currentTime=reviewPosition;
+    window.dispatchEvent(new Event("flcopilot-review-position"));
+}
 function reviewDispose(){
-    reviewGeneration++;reviewSwitch++;$("review-player").pause();
+    reviewGeneration++;reviewPause();
     $("review-player").removeAttribute("src");$("review-player").load();
-    Object.values(reviewURLs).forEach(url=>URL.revokeObjectURL(url));reviewURLs={};reviewSide=null;
+    Object.values(reviewURLs).forEach(url=>URL.revokeObjectURL(url));reviewURLs={};reviewSide=null;reviewPosition=0;
+    document.querySelectorAll("[data-review-side]").forEach(b=>b.classList.remove("selected"));
+    $("review-now").textContent="Select A or B to load its verified WAV.";
+    window.dispatchEvent(new Event("flcopilot-review-disposed"));
 }
 async function reviewRefresh(){
     await refreshAssets();
@@ -42,37 +59,52 @@ function reviewShow(result){
     $("review-revision").textContent=`Saved decision revision ${result.revision} · human preference only`;
     for(const opt of $("review-choice").options)opt.disabled=!ready&&opt.value.startsWith("prefer_");
     showFiles($("review-files"),result.files,"Review exports · originals preserved");
+    window.dispatchEvent(new Event("flcopilot-review-opened"));
+}
+function reviewMetadata(player){
+    return new Promise((resolve,reject)=>{
+        const done=()=>{clearTimeout(timer);player.removeEventListener("loadedmetadata",ok);player.removeEventListener("error",bad);reviewAbortLoad=null;};
+        const ok=()=>{done();resolve(true);},bad=()=>{done();reject(Error("Browser could not load this audition WAV."));};
+        const timer=setTimeout(bad,15000);
+        reviewAbortLoad=()=>{done();resolve(false);};
+        player.addEventListener("loadedmetadata",ok,{once:true});player.addEventListener("error",bad,{once:true});
+        if(player.readyState>=1)ok();
+    });
 }
 async function reviewAudition(side){
     if(!reviewCurrent||reviewCurrent.report.status!=="ready")throw Error("Open a ready review first.");
+    if(!["a","b"].includes(side))throw Error("Choose audition side A or B.");
+    if(reviewAbortLoad)reviewAbortLoad();
     const generation=reviewGeneration, change=++reviewSwitch, player=$("review-player");
-    const position=Number.isFinite(player.currentTime)?player.currentTime:0;
-    player.pause();
-    const name=side==="a"?"A_Baseline_Matched.wav":"B_Candidate_Matched.wav";
-    const file=reviewCurrent.files.find(f=>f.name===name);
-    if(!file)throw Error("Verified audition file is missing.");
-    if(!reviewURLs[side]){
-        const url=await fileBlob(file);
-        if(generation!==reviewGeneration||change!==reviewSwitch){URL.revokeObjectURL(url);return;}
-        reviewURLs[side]=url;
-    }
-    if(generation!==reviewGeneration||change!==reviewSwitch)return;
-    if(reviewSide!==side){
-        player.src=reviewURLs[side];player.load();reviewSide=side;
-        await new Promise((resolve,reject)=>{
-            const done=()=>{clearTimeout(timer);player.removeEventListener("loadedmetadata",ok);player.removeEventListener("error",bad);};
-            const ok=()=>{done();resolve();},bad=()=>{done();reject(Error("Browser could not load this audition WAV."));};
-            const timer=setTimeout(bad,15000);
-            player.addEventListener("loadedmetadata",ok,{once:true});player.addEventListener("error",bad,{once:true});
-            if(player.readyState>=1)ok();
-        });
-        if(generation!==reviewGeneration||change!==reviewSwitch)return;
-        player.currentTime=Math.min(position,Math.max(0,player.duration-.01));
-    }
-    document.querySelectorAll("[data-review-side]").forEach(b=>b.classList.toggle("selected",b.dataset.reviewSide===side));
-    $("review-now").textContent=side==="a"?"A · baseline · level matched":"B · candidate · level matched";
-    await player.play();
+    const current=()=>generation===reviewGeneration&&change===reviewSwitch;
+    if(!reviewLoading&&player.readyState>=1)reviewPosition=player.currentTime;
+    reviewLoading=true;player.pause();
+    try{
+        const name=side==="a"?"A_Baseline_Matched.wav":"B_Candidate_Matched.wav";
+        const file=reviewCurrent.files.find(f=>f.name===name);
+        if(!file)throw Error("Verified audition file is missing.");
+        if(!reviewURLs[side]){
+            const url=await fileBlob(file);
+            if(!current()){URL.revokeObjectURL(url);return;}
+            reviewURLs[side]=url;
+        }
+        if(!current())return;
+        if(reviewSide!==side){player.src=reviewURLs[side];player.load();reviewSide=side;}
+        if(!await reviewMetadata(player)||!current())return;
+        const target={position:reviewPosition};
+        window.dispatchEvent(new CustomEvent("flcopilot-review-will-play",{detail:target}));
+        player.currentTime=Math.max(0,Math.min(target.position,Math.max(0,player.duration-.001)));
+        reviewPosition=player.currentTime;
+        document.querySelectorAll("[data-review-side]").forEach(b=>b.classList.toggle("selected",b.dataset.reviewSide===side));
+        $("review-now").textContent=side==="a"?"A · baseline · level matched":"B · candidate · level matched";
+        reviewLoading=false;
+        await player.play();
+    }catch(error){if(current())throw error;}
+    finally{if(current())reviewLoading=false;}
 }
+$("review-player").addEventListener("timeupdate",()=>{
+    if(!reviewLoading&&$("review-player").readyState>=1)reviewPosition=$("review-player").currentTime;
+});
 action("review-refresh",reviewRefresh);
 action("review-build",async()=>{
     if(!$("review-same-range").checked)throw Error("Confirm the same song, export range and settings before pairing the bounces.");
@@ -82,7 +114,7 @@ action("review-build",async()=>{
     reviewShow(await job("review-audio",data));await reviewRefresh();
 });
 action("review-play-a",()=>reviewAudition("a"));action("review-play-b",()=>reviewAudition("b"));
-action("review-pause",async()=>{$("review-player").pause();reviewSwitch++;});
+action("review-pause",async()=>{reviewPause();});
 action("review-save-choice",async()=>{
     if(!reviewCurrent)throw Error("Open a review first.");
     const updated=await api("review-decision",{review_id:reviewCurrent.review_id,expected_revision:reviewCurrent.revision,
@@ -90,7 +122,7 @@ action("review-save-choice",async()=>{
     reviewCurrent=updated;$("review-revision").textContent=`Saved decision revision ${updated.revision} · human preference only`;
     notice("Listening preference saved locally. No FL setting or audio file was changed.",true);await reviewRefresh();
 });
-$("stop").addEventListener("click",()=>{$("review-player").pause();reviewSwitch++;});
+$("stop").addEventListener("click",reviewPause);
 document.querySelector('[data-tab="review"]').addEventListener("click",()=>reviewRefresh().catch(e=>notice(e.message)));
 window.addEventListener("beforeunload",reviewDispose);
 
