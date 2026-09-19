@@ -13,6 +13,7 @@ from .planner import NoRedirect
 from .contracts import PrepareRequest,MasterRequest,Approval
 from .plugin_workbench import ScanRequest,ParameterPreview
 from .review_contracts import ReviewRequest,ReviewID
+from .render_workflow import WatchID
 
 def schema(props=None,required=()):
     return {"type":"object","properties":props or {},"required":list(required),"additionalProperties":False}
@@ -33,6 +34,8 @@ TOOLS=[
     {"name":"copilot_review_audio","description":"After the user confirms matching export range/settings, analyze two imported bounces and create measured level-matched A/B when timing checks pass. Returns a job, never changes FL. Readiness is not artistic approval.","inputSchema":ReviewRequest.model_json_schema()},
     {"name":"copilot_reviews","description":"List the latest 50 persisted audio reviews. Human listening choices do not authorize DAW changes.","inputSchema":schema()},
     {"name":"copilot_review_get","description":"Read a historical audio review and its separately recorded human preference. This does not revalidate a live FL session or prove audio provenance.","inputSchema":ReviewID.model_json_schema()},
+    {"name":"copilot_render_status","description":"Read the current desktop-armed manual export watch and its captured asset ID. Folder consent and arming must happen in Audio lab; no path selection or rendering command is exposed to AI. Poll copilot_job for completion, then use the existing analyze/review tools. Never invent matching-range confirmation.","inputSchema":schema()},
+    {"name":"copilot_render_cancel","description":"Cancel the exact current export watch by its observed watch_id. Does not delete files, stop unrelated jobs, or undo completed intake. Cancellation may already be too late if publication completed.","inputSchema":WatchID.model_json_schema()},
     {"name":"copilot_stop","description":"Latch emergency stop; no later operation starts. In-flight writes are not undone.","inputSchema":schema()},
 ]
 
@@ -54,7 +57,7 @@ def http_call(workspace,route,data=None):
 def tool_call(workspace,name,args):
     if not isinstance(args,dict): raise ValueError("Tool arguments must be an object")
     empty={"copilot_status":("/api/status",False),"copilot_inspect":("/api/inspect",True),
-        "copilot_assets":("/api/assets",False),"copilot_reviews":("/api/reviews",False),"copilot_stop":("/api/stop",True)}
+        "copilot_render_status":("/api/render-watch",False),"copilot_assets":("/api/assets",False),"copilot_reviews":("/api/reviews",False),"copilot_stop":("/api/stop",True)}
     if name in empty:
         if args: raise ValueError("This tool takes no arguments")
         route,post=empty[name]; return http_call(workspace,route,{} if post else None)
@@ -75,7 +78,7 @@ def tool_call(workspace,name,args):
         if set(args)!={"track"} or type(args["track"]) is not int or not 1<=args["track"]<=999:
             raise ValueError("A non-master insert (1–999) is required")
         return http_call(workspace,"/api/control-test-preview",args)
-    models={"copilot_review_audio":(ReviewRequest,"/api/review-audio"),"copilot_review_get":(ReviewID,"/api/review-get"),"copilot_plugin_scan":(ScanRequest,"/api/plugin-scan"),"copilot_plugin_preview":(ParameterPreview,"/api/plugin-preview"),"copilot_prepare":(PrepareRequest,"/api/prepare"),"copilot_execute":(Approval,"/api/execute"),"copilot_master":(MasterRequest,"/api/master")}
+    models={"copilot_render_cancel":(WatchID,"/api/render-watch-cancel"),"copilot_review_audio":(ReviewRequest,"/api/review-audio"),"copilot_review_get":(ReviewID,"/api/review-get"),"copilot_plugin_scan":(ScanRequest,"/api/plugin-scan"),"copilot_plugin_preview":(ParameterPreview,"/api/plugin-preview"),"copilot_prepare":(PrepareRequest,"/api/prepare"),"copilot_execute":(Approval,"/api/execute"),"copilot_master":(MasterRequest,"/api/master")}
     if name not in models: raise ValueError("Unknown tool")
     model,route=models[name]; parsed=model.model_validate_json(json.dumps(args))
     return http_call(workspace,route,parsed.model_dump(mode="json"))

@@ -21,6 +21,8 @@ class Service:
         from .review_store import ReviewStore
         self.reviews=ReviewStore(self.assets.root/"reviews.sqlite3")
         self.jobs=Jobs(); self.audio_lock=threading.Lock()
+        from .render_workflow import RenderWorkflow
+        self.render_workflow=RenderWorkflow(self.assets,self.jobs,self.executor.stop_event)
         self.planner=LocalPlanner(endpoint)
         self.last_snapshot=None
     def status(self):
@@ -42,6 +44,7 @@ class Service:
                 {"name":"Session inspection + mixer writes","status":"demo" if self.adapter.name=="demo" else "runtime checked","detail":"PostFader V10: fader, pan, name, mute, stereo separation and loaded effect parameters; approval plus independent readback."},
                 {"name":"Plugin workbench","status":"implemented","detail":"Bounded read-only parameter search with high-index pagination; observation-bound normalized or explicit dB/Hz/ms/percent previews. Display searches require stopped transport and separate approval."},
                 {"name":"Windows effect insertion","status":"experimental","detail":"Native Win32 Add menu only; isolated empty destination; manual fallback when not exposed."},
+                {"name":"Manual FL export intake","status":"implemented","detail":"One-shot, desktop-authorized local folder watch with verified copy, cancellation and before/after handoff. Does not trigger FL rendering or prove export provenance."},
                 {"name":"Before / after audio review","status":"implemented","detail":"Imported paired exports, conservative timing checks, measured attenuation-only A/B, section deltas and saved human preferences. No live capture or causal-quality claim."},
                 {"name":"Audio analysis + WAV finishing","status":"implemented","detail":"Local exported audio; gated LUFS, oversampled-peak estimate, real A/B files."},
                 {"name":"MIDI sketches","status":"implemented","detail":"Deterministic file export; manual FL import."},
@@ -179,5 +182,11 @@ class Service:
         from .review_contracts import ReviewID
         request=ReviewID.model_validate_json(json.dumps(data))
         return self.reviews.get(request.review_id)
+    def render_watch(self,data):
+        return self.render_workflow.start(data)
+    def render_watch_status(self):
+        return self.render_workflow.status()
+    def render_watch_cancel(self,data):
+        return self.render_workflow.cancel(data)
     def close(self):
         self.executor.stop_event.set(); self.jobs.close(); self.reviews.close(); self.journal.close()

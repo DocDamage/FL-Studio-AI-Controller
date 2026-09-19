@@ -1,0 +1,26 @@
+{
+  "checks": [
+    "Folder consent required before arming",
+    "Armed state visible",
+    "Folder frozen while active",
+    "Consent consumed after arming",
+    "Real WAV captured and shown as verified copy",
+    "Captured WAV analyzed through Audio lab",
+    "Before selection preserved across second export",
+    "After handoff invalidates stale range confirmation",
+    "No automatic export-range assumption",
+    "Two watched WAVs produce measured A/B and report",
+    "390 px responsive layout has no horizontal overflow",
+    "Cancel watch leaves unrelated work and global Stop alone",
+    "Global Stop cancels intake",
+    "Zero DAW writes or control plans",
+    "No JavaScript page errors"
+  ],
+  "page_errors": [],
+  "transport": "direct_service_dom_fallback",
+  "ordinary_navigation": "blocked_by_environment_administrator",
+  "browser_policy_changed": false,
+  "fixture": "Synthetic WAVs only",
+  "live_fl_tested": false,
+  "platform": "linux"
+}
