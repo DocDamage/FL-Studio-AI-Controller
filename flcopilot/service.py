@@ -50,7 +50,7 @@ class Service:
                 {"name":"Windows effect insertion","status":"experimental","detail":"Native Win32 Add menu only; isolated empty destination; manual fallback when not exposed."},
                 {"name":"Native export acceptance checklist","status":"implemented","detail":"Persistent desktop-only observations, verified capture/review binding, and privacy-filtered progress or completed reports. No automatic qualification or new DAW authority."},
                 {"name":"Manual FL export intake","status":"implemented","detail":"One-shot, desktop-authorized local folder watch with verified copy, cancellation and before/after handoff. Does not trigger FL rendering or prove export provenance."},
-                {"name":"Before / after audio review","status":"implemented","detail":"Imported paired exports, conservative timing checks, measured attenuation-only A/B, waveform/loop navigation, server-randomized blind A/B/X discrimination trials, and saved human preferences. No live capture or causal-quality claim."},
+                {"name":"Before / after audio review","status":"implemented","detail":"Imported paired exports, conservative timing checks, measured attenuation-only A/B, waveform/loop navigation, single blind A/B/X trials, sealed balanced multi-trial blind sessions, and saved human preferences. No live capture or causal-quality claim."},
                 {"name":"Audio analysis + WAV finishing","status":"implemented","detail":"Local exported audio; gated LUFS, oversampled-peak estimate, real A/B files."},
                 {"name":"MIDI sketches","status":"implemented","detail":"Deterministic file export; manual FL import."},
                 {"name":"AI planning","status":"optional","detail":"Local llama.cpp-compatible endpoint or MCP relay; no bundled weights."},
@@ -209,6 +209,30 @@ class Service:
         from .review_contracts import ReviewID
         request=ReviewID.model_validate_json(json.dumps(data))
         return self.reviews.blind_history(request.review_id)
+    def review_blind_session_start(self,data):
+        import json
+        from .review_contracts import BlindSessionStart
+        from .review_blind import verified_paths
+        request=BlindSessionStart.model_validate_json(json.dumps(data))
+        with self.audio_lock:
+            review=self.reviews.get(request.review_id)
+            verified_paths(self.assets,review,self.executor.stop_event)
+            return self.reviews.blind_session_start(request.review_id,request.trials)
+    def review_blind_session_submit(self,data):
+        import json
+        from .review_contracts import BlindSessionSubmit
+        from .review_blind import verified_paths
+        request=BlindSessionSubmit.model_validate_json(json.dumps(data))
+        with self.audio_lock:
+            session=self.reviews.blind_session_get(request.session_id)
+            review=self.reviews.get(session["review_id"])
+            verified_paths(self.assets,review,self.executor.stop_event)
+            return self.reviews.blind_session_submit(request)
+    def review_blind_session_history(self,data):
+        import json
+        from .review_contracts import ReviewID
+        request=ReviewID.model_validate_json(json.dumps(data))
+        return self.reviews.blind_session_history(request.review_id)
     def review_blind_file(self,trial_id,sample):
         from .review_blind import blind_file
         with self.audio_lock:

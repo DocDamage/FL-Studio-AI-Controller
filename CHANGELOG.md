@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased v0.5 — sealed blind listening sessions
+
+Extended blind A/B/X review with balanced precommitted sessions of 4–20 trials.
+Reference A/B identity and X answers are generated for the whole session up front;
+intermediate mappings, correctness and aggregate results remain sealed until the
+planned final answer. Open sessions persist across restarts and existing
+single-trial databases migrate without discarding history.
+
+Active blind work now hides labeled measurements, waveforms, ordinary A/B playback,
+report details, preference controls and output-file links. Completed sessions expose
+descriptive correct/incorrect/unsure counts, scored accuracy and a clearly bounded
+50/50 chance-tail calculation. No formal significance, quality, preference or causal
+claim is made. No dependency, MCP tool, automatic render or DAW authority was added.
+See [Blind A/B/X listening](docs/BLIND_ABX_REVIEW.md).
+
 ## Unreleased v0.5 — blind A/B/X listening
 
 Added persistent server-randomized blind A/B/X discrimination trials to technically

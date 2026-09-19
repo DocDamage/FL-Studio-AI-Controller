@@ -44,3 +44,11 @@
 .review-blind audio{width:100%;max-width:720px}
 .review-blind h4{margin:18px 0 8px}
 .review-blind .review-history-row{margin-top:8px}
+
+.blind-session-setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,180px) auto;gap:14px;align-items:end;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:12px}
+.blind-session-setup h4,.blind-session-setup p{margin:0}
+.blind-history{margin-top:16px}
+#review-result.blind-focus>.panel-title,#review-result.blind-focus>#review-readiness,#review-result.blind-focus>.table-wrap,#review-result.blind-focus>#review-match-note,#review-result.blind-focus>#review-section-panel,#review-result.blind-focus>#review-warnings,#review-result.blind-focus>details,#review-result.blind-focus>.review-decision{display:none!important}
+#review-result.blind-focus #review-audition>:not(.review-blind){display:none!important}
+#review-files.blind-focus-hidden{display:none!important}
+@media(max-width:700px){.blind-session-setup{grid-template-columns:1fr}.blind-session-setup button{width:100%}}

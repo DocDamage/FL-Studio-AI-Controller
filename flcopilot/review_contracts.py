@@ -45,3 +45,21 @@ class BlindTrialID(Strict):
 
 class BlindTrialSubmit(BlindTrialID):
     guess: Literal["a", "b", "unsure"]
+
+
+class BlindSessionID(Strict):
+    session_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
+class BlindSessionStart(ReviewID):
+    trials: int = Field(default=8, ge=4, le=20)
+
+    @model_validator(mode="after")
+    def even_trial_count(self):
+        if self.trials % 2:
+            raise ValueError("Blind session trial count must be even")
+        return self
+
+
+class BlindSessionSubmit(BlindSessionID):
+    guess: Literal["a", "b", "unsure"]

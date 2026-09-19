@@ -67,9 +67,11 @@ agent. The distinction is intentional and visible in the capability ledger.
   timing checks can refuse valid periodic or heavily changed audio. A ready pair
   is not sample/phase alignment, source provenance, causal proof or a quality score.
   Standard A/B and blind A/B/X playback are approximate, not gapless or
-  sample-synchronous. A blind trial is one human discrimination attempt, not a
-  formal double-blind study, repeatability result, statistical-significance claim,
-  preference or artistic verdict. Human decisions remain separate annotations.
+  sample-synchronous. Sealed sessions precommit balanced local assignments and hide
+  intermediate feedback, but they still do not establish independent trials,
+  controlled listening conditions, population repeatability, formal statistical
+  significance, preference or an artistic verdict. Human decisions remain separate
+  annotations.
   Crash-time orphan exports can remain during a narrow publication interval; no DAW
   replay or automatic user-file deletion occurs. See AUDIO_REVIEW.md and
   BLIND_ABX_REVIEW.md for the exact heuristics and persistence boundaries.

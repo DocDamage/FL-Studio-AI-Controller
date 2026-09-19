@@ -212,7 +212,10 @@ def test_legacy_parameter_endpoint_rejects_bad_slot(app):
     ('review-decision',{'review_id':'a'*32,'expected_revision':1,'decision':'prefer_candidate'}),
     ('review-blind-start',{'review_id':'a'*32}),
     ('review-blind-history',{'review_id':'a'*32}),
-    ('review-blind-submit',{'trial_id':'a'*32,'guess':'a'})])
+    ('review-blind-submit',{'trial_id':'a'*32,'guess':'a'}),
+    ('review-blind-session-start',{'review_id':'a'*32,'trials':4}),
+    ('review-blind-session-history',{'review_id':'a'*32}),
+    ('review-blind-session-submit',{'session_id':'a'*32,'guess':'a'})])
 def test_audio_review_routes_require_auth(app,route,data):
     _,srv,_=app
     with pytest.raises(urllib.error.HTTPError) as error:call(srv,'/api/'+route,data,token=False)
@@ -246,6 +249,20 @@ def test_audio_review_http_mcp_and_decision_lifecycle(app):
     revealed=poll(srv,json.load(call(srv,'/api/review-blind-submit',
         {'trial_id':blind['trial_id'],'guess':'unsure'})))
     assert revealed['answer_revealed'] and revealed['correct'] is None and 'mapping' in revealed
+    assert s.review_get({'review_id':review['review_id']})['decision']=='undecided'
+    session=poll(srv,json.load(call(srv,'/api/review-blind-session-start',
+        {'review_id':review['review_id'],'trials':4})))
+    assert session['status']=='open' and session['answers_sealed'] and session['answered_trials']==0
+    for index in range(4):
+        session=poll(srv,json.load(call(srv,'/api/review-blind-session-submit',
+            {'session_id':session['session_id'],'guess':'unsure'})))
+        if index<3:
+            assert session['status']=='open' and session['answers_sealed'] and 'summary' not in session
+        else:
+            assert session['status']=='completed' and not session['answers_sealed']
+            assert session['summary']['unsure']==4 and session['summary']['scored_trials']==0
+    sessions=json.load(call(srv,'/api/review-blind-session-history',{'review_id':review['review_id']}))
+    assert len(sessions)==1 and sessions[0]['status']=='completed'
     assert s.review_get({'review_id':review['review_id']})['decision']=='undecided'
     choice=json.load(call(srv,'/api/review-decision',dict(review_id=review['review_id'],expected_revision=1,
         decision='prefer_candidate',note='Explicit listening choice')))

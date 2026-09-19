@@ -2,22 +2,29 @@
 // Measurements and listening choices are separate; this workspace has no DAW writer.
 let reviewCurrent=null, reviewURLs={}, reviewGeneration=0, reviewSide=null, reviewSwitch=0;
 let reviewPosition=0, reviewLoading=false, reviewAbortLoad=null;
-let reviewBlind=null, reviewBlindURLs={}, reviewBlindGeneration=0, reviewBlindSwitch=0;
+let reviewBlind=null, reviewBlindSession=null, reviewBlindURLs={}, reviewBlindGeneration=0, reviewBlindSwitch=0;
 let reviewBlindPosition=0, reviewBlindLoading=false, reviewBlindAbort=null;
 function reviewPause(){
     reviewSwitch++;if(reviewAbortLoad)reviewAbortLoad();reviewAbortLoad=null;
     reviewLoading=false;$("review-player").pause();
     window.dispatchEvent(new Event("flcopilot-review-paused"));
 }
+function reviewBlindTrial(){
+    return reviewBlindSession&&reviewBlindSession.status==="open"?reviewBlindSession.current_trial:reviewBlind;
+}
+function reviewBlindFocus(active){
+    $("review-result").classList.toggle("blind-focus",!!active);
+    $("review-files").classList.toggle("blind-focus-hidden",!!active);
+}
 function reviewSeekTo(seconds){
     if(!reviewCurrent||reviewCurrent.report.status!=="ready"||!Number.isFinite(seconds))return;
     const m=reviewCurrent.report.baseline, end=m.frames/m.sample_rate;
     reviewPosition=Math.max(0,Math.min(seconds,Math.max(0,end-.001)));
-    if(reviewBlind&&reviewBlind.status==="open")reviewBlindPosition=reviewPosition;
+    if(reviewBlindTrial())reviewBlindPosition=reviewPosition;
     const player=$("review-player");
     if(!reviewLoading&&player.readyState>=1)player.currentTime=reviewPosition;
     const blindPlayer=$("review-blind-player");
-    if(reviewBlind&&reviewBlind.status==="open"&&!reviewBlindLoading&&blindPlayer.readyState>=1)blindPlayer.currentTime=reviewBlindPosition;
+    if(reviewBlindTrial()&&!reviewBlindLoading&&blindPlayer.readyState>=1)blindPlayer.currentTime=reviewBlindPosition;
     window.dispatchEvent(new Event("flcopilot-review-position"));
 }
 function reviewDispose(){
@@ -32,23 +39,32 @@ function reviewBlindPause(){
     reviewBlindSwitch++;if(reviewBlindAbort)reviewBlindAbort();reviewBlindAbort=null;
     reviewBlindLoading=false;$("review-blind-player").pause();
 }
-function reviewBlindDispose(){
+function reviewBlindResetAudio(){
     reviewBlindGeneration++;reviewBlindPause();
     const player=$("review-blind-player");player.removeAttribute("src");player.load();
     Object.values(reviewBlindURLs).forEach(url=>URL.revokeObjectURL(url));reviewBlindURLs={};
-    reviewBlind=null;reviewBlindPosition=0;
-    $("review-blind-controls").hidden=true;$("review-blind-result").hidden=true;
-    $("review-blind-state").textContent="Start a trial to hide which matched WAV is baseline or candidate.";
+    document.querySelectorAll("[data-review-blind]").forEach(b=>b.classList.remove("selected"));
     $("review-blind-now").textContent="No blind sample loaded.";
 }
+function reviewBlindDispose(){
+    reviewBlindResetAudio();
+    reviewBlind=null;reviewBlindSession=null;reviewBlindPosition=0;
+    $("review-blind-controls").hidden=true;$("review-blind-result").hidden=true;
+    $("review-blind-session-result").hidden=true;
+    $("review-blind-state").textContent="Start one blind trial or a precommitted session.";
+    $("review-blind-start").disabled=false;$("review-blind-session-start").disabled=false;
+    reviewBlindFocus(false);
+}
 function reviewBlindShow(trial){
-    reviewBlind=trial;
+    reviewBlindSession=null;reviewBlind=trial;
     const open=trial.status==="open";
-    $("review-blind-controls").hidden=false;
+    $("review-blind-controls").hidden=false;$("review-blind-session-result").hidden=true;
+    $("review-blind-start").disabled=open;$("review-blind-session-start").disabled=open;
     $("review-blind-state").textContent=open?
-        "Answer hidden. Reference A and Reference B are randomly assigned; X is exactly one of them.":
+        "Answer hidden. Labeled measurements and waveforms are hidden until you answer.":
         "Answer revealed for this completed trial.";
     for(const id of ["review-blind-guess-a","review-blind-guess-b","review-blind-unsure"])$(id).disabled=!open;
+    reviewBlindFocus(open);
     if(open){
         $("review-blind-result").hidden=true;
     }else{
@@ -56,6 +72,26 @@ function reviewBlindShow(trial){
             "Correct: X matched Reference "+trial.x_matches.toUpperCase()+".":"Incorrect: X matched Reference "+trial.x_matches.toUpperCase()+".";
         const mapping=`Reference A was ${trial.mapping.a}; Reference B was ${trial.mapping.b}; X was ${trial.mapping.x}.`;
         $("review-blind-result").hidden=false;$("review-blind-result").textContent=result+" "+mapping;
+        $("review-blind-start").disabled=false;$("review-blind-session-start").disabled=false;
+    }
+}
+function reviewBlindSessionShow(session){
+    reviewBlind=null;reviewBlindSession=session;
+    const open=session.status==="open";
+    $("review-blind-controls").hidden=false;$("review-blind-result").hidden=true;
+    $("review-blind-start").disabled=open;$("review-blind-session-start").disabled=open;
+    for(const id of ["review-blind-guess-a","review-blind-guess-b","review-blind-unsure"])$(id).disabled=!open;
+    reviewBlindFocus(open);
+    if(open){
+        $("review-blind-session-result").hidden=true;
+        $("review-blind-state").textContent=`Sealed session · trial ${session.answered_trials+1} of ${session.planned_trials}. No mapping or correctness is revealed until all planned answers are recorded.`;
+    }else{
+        const s=session.summary, accuracy=s.accuracy===null?"—":(s.accuracy*100).toFixed(1)+"%";
+        const tail=s.chance_tail_probability===null?"—":s.chance_tail_probability.toFixed(4);
+        $("review-blind-state").textContent="Session complete. The precommitted mappings are now revealed.";
+        $("review-blind-session-result").hidden=false;
+        $("review-blind-session-result").textContent=`${s.correct} correct · ${s.incorrect} incorrect · ${s.unsure} unsure · ${accuracy} of scored trials correct · descriptive chance-tail ${tail}. This is not a statistical-significance claim.`;
+        $("review-blind-start").disabled=false;$("review-blind-session-start").disabled=false;
     }
 }
 async function reviewBlindRefresh(reviewId=reviewCurrent&&reviewCurrent.review_id){
@@ -67,10 +103,26 @@ async function reviewBlindRefresh(reviewId=reviewCurrent&&reviewCurrent.review_i
         if(row.status==="open")return `<div class="review-history-row"><div><strong>Unfinished blind trial</strong><small>${when} · answer still hidden</small></div></div>`;
         const outcome=row.correct===null?"unsure":row.correct?"correct":"incorrect";
         return `<div class="review-history-row"><div><strong>Blind A/B/X · ${esc(outcome)}</strong><small>${when} · X matched ${esc(row.x_matches.toUpperCase())} · A was ${esc(row.mapping.a)} · B was ${esc(row.mapping.b)}</small></div></div>`;
-    }).join(""):'<p>No blind trials saved for this review.</p>';
-    if(!reviewBlind){
+    }).join(""):'<p>No single blind trials saved for this review.</p>';
+    if(!reviewBlind&&!reviewBlindSession){
         const open=rows.find(row=>row.status==="open");
         if(open){reviewBlindPosition=reviewPosition;reviewBlindShow(open);}
+    }
+}
+async function reviewBlindSessionRefresh(reviewId=reviewCurrent&&reviewCurrent.review_id){
+    if(!reviewId)return;
+    const rows=await api("review-blind-session-history",{review_id:reviewId});
+    if(!reviewCurrent||reviewCurrent.review_id!==reviewId)return;
+    $("review-blind-session-history").innerHTML=rows.length?rows.map(row=>{
+        const when=esc(new Date(row.created*1000).toLocaleString());
+        if(row.status==="open")return `<div class="review-history-row"><div><strong>Sealed blind session · ${row.answered_trials}/${row.planned_trials} recorded</strong><small>${when} · mappings and correctness still hidden</small></div></div>`;
+        const s=row.summary, scored=s.scored_trials, accuracy=scored?number(s.accuracy*100,1)+"%":"—";
+        const tail=s.chance_tail_probability===null?"—":number(s.chance_tail_probability,4);
+        return `<div class="review-history-row"><div><strong>${row.planned_trials}-trial blind session · ${s.correct}/${scored} scored correct</strong><small>${when} · ${s.unsure} unsure · ${accuracy} correct among scored answers · descriptive chance-tail ${tail}</small></div></div>`;
+    }).join(""):'<p>No precommitted blind sessions saved for this review.</p>';
+    if(!reviewBlind&&!reviewBlindSession){
+        const open=rows.find(row=>row.status==="open");
+        if(open){reviewBlindPosition=reviewPosition;reviewBlindSessionShow(open);}
     }
 }
 async function reviewBlindStart(){
@@ -79,13 +131,22 @@ async function reviewBlindStart(){
     const trial=await job("review-blind-start",{review_id:reviewCurrent.review_id});
     reviewBlindPosition=reviewPosition;reviewBlindShow(trial);
     await reviewBlindRefresh(reviewCurrent.review_id);
-    notice("Blind A/B/X trial started. The answer stays server-side until you submit a guess.",true);
+    notice("Blind A/B/X trial started. Labeled review evidence is hidden until you answer.",true);
+}
+async function reviewBlindSessionStart(){
+    if(!reviewCurrent||reviewCurrent.report.status!=="ready")throw Error("Open a ready review first.");
+    reviewBlindDispose();
+    const session=await job("review-blind-session-start",{review_id:reviewCurrent.review_id,trials:Number($("review-blind-session-count").value)});
+    reviewBlindPosition=reviewPosition;reviewBlindSessionShow(session);
+    await reviewBlindSessionRefresh(reviewCurrent.review_id);
+    notice("Precommitted blind session started. All answers stay sealed until the full session is completed.",true);
 }
 async function reviewBlindBlob(sample,trial,generation,change){
     const response=await fetch(`/api/review-blind-file/${trial.trial_id}/${sample}`,{headers:{Authorization:"Bearer "+token}});
     if(!response.ok){let out={};try{out=await response.json();}catch{}throw Error(out.error||response.statusText);}
     const url=URL.createObjectURL(await response.blob());
-    if(generation!==reviewBlindGeneration||change!==reviewBlindSwitch||reviewBlind!==trial){URL.revokeObjectURL(url);return null;}
+    const active=reviewBlindTrial();
+    if(generation!==reviewBlindGeneration||change!==reviewBlindSwitch||!active||active.trial_id!==trial.trial_id){URL.revokeObjectURL(url);return null;}
     return url;
 }
 function reviewBlindMetadata(player){
@@ -99,11 +160,12 @@ function reviewBlindMetadata(player){
     });
 }
 async function reviewBlindAudition(sample){
-    if(!reviewBlind)throw Error("Start or resume a blind trial first.");
+    const trial=reviewBlindTrial();
+    if(!trial)throw Error("Start or resume blind listening first.");
     if(!["a","b","x"].includes(sample))throw Error("Choose blind sample A, B or X.");
     reviewPause();
-    const trial=reviewBlind,generation=reviewBlindGeneration,change=++reviewBlindSwitch,player=$("review-blind-player");
-    const current=()=>generation===reviewBlindGeneration&&change===reviewBlindSwitch&&reviewBlind===trial;
+    const generation=reviewBlindGeneration,change=++reviewBlindSwitch,player=$("review-blind-player");
+    const current=()=>{const active=reviewBlindTrial();return generation===reviewBlindGeneration&&change===reviewBlindSwitch&&active&&active.trial_id===trial.trial_id;};
     if(!reviewBlindLoading&&player.readyState>=1)reviewBlindPosition=player.currentTime;
     reviewBlindLoading=true;player.pause();
     try{
@@ -123,10 +185,19 @@ async function reviewBlindAudition(sample){
     finally{if(current())reviewBlindLoading=false;}
 }
 async function reviewBlindSubmit(guess){
-    if(!reviewBlind||reviewBlind.status!=="open")throw Error("Start or resume an unanswered blind trial first.");
+    const trial=reviewBlindTrial();
+    if(!trial)throw Error("Start or resume unanswered blind listening first.");
     reviewBlindPause();
+    if(reviewBlindSession&&reviewBlindSession.status==="open"){
+        const result=await job("review-blind-session-submit",{session_id:reviewBlindSession.session_id,guess});
+        reviewBlindResetAudio();reviewBlindSessionShow(result);
+        await reviewBlindSessionRefresh(result.review_id);
+        notice(result.status==="open"?"Answer sealed. Continue to the next precommitted trial.":"Blind session completed and revealed. Your saved preference was not changed.",true);
+        return;
+    }
+    if(!reviewBlind||reviewBlind.status!=="open")throw Error("Start or resume an unanswered blind trial first.");
     const result=await job("review-blind-submit",{trial_id:reviewBlind.trial_id,guess});
-    reviewBlindShow(result);await reviewBlindRefresh(result.review_id);
+    reviewBlindResetAudio();reviewBlindShow(result);await reviewBlindRefresh(result.review_id);
     notice("Blind answer recorded and revealed. Your saved listening preference was not changed.",true);
 }
 $("review-blind-player").addEventListener("timeupdate",()=>{
@@ -169,7 +240,7 @@ function reviewShow(result){
     $("review-revision").textContent=`Saved decision revision ${result.revision} · human preference only`;
     for(const opt of $("review-choice").options)opt.disabled=!ready&&opt.value.startsWith("prefer_");
     showFiles($("review-files"),result.files,"Review exports · originals preserved");
-    if(ready)reviewBlindRefresh(result.review_id).catch(e=>notice(e.message));
+    if(ready)Promise.all([reviewBlindSessionRefresh(result.review_id),reviewBlindRefresh(result.review_id)]).catch(e=>notice(e.message));
     window.dispatchEvent(new Event("flcopilot-review-opened"));
 }
 function reviewMetadata(player){
@@ -184,6 +255,7 @@ function reviewMetadata(player){
 }
 async function reviewAudition(side){
     if(!reviewCurrent||reviewCurrent.report.status!=="ready")throw Error("Open a ready review first.");
+    if(reviewBlindTrial())throw Error("Finish the active blind trial or session before using labeled A/B playback.");
     reviewBlindPause();
     if(!["a","b"].includes(side))throw Error("Choose audition side A or B.");
     if(reviewAbortLoad)reviewAbortLoad();
@@ -228,6 +300,7 @@ action("review-build",async()=>{
 action("review-play-a",()=>reviewAudition("a"));action("review-play-b",()=>reviewAudition("b"));
 action("review-pause",async()=>{reviewPause();});
 action("review-blind-start",reviewBlindStart);
+action("review-blind-session-start",reviewBlindSessionStart);
 action("review-blind-play-a",()=>reviewBlindAudition("a"));action("review-blind-play-b",()=>reviewBlindAudition("b"));action("review-blind-play-x",()=>reviewBlindAudition("x"));
 action("review-blind-pause",async()=>{reviewBlindPause();});
 action("review-blind-guess-a",()=>reviewBlindSubmit("a"));action("review-blind-guess-b",()=>reviewBlindSubmit("b"));action("review-blind-unsure",()=>reviewBlindSubmit("unsure"));
