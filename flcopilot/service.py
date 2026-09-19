@@ -25,6 +25,8 @@ class Service:
         self.render_workflow=RenderWorkflow(self.assets,self.jobs,self.executor.stop_event)
         from .bounce_library import BounceLibrary
         self.bounces=BounceLibrary(self.assets,self.executor.stop_event)
+        from .acceptance_workbench import AcceptanceWorkbench
+        self.acceptance=AcceptanceWorkbench(self)
         self.planner=LocalPlanner(endpoint)
         self.last_snapshot=None
     def status(self):
@@ -46,6 +48,7 @@ class Service:
                 {"name":"Session inspection + mixer writes","status":"demo" if self.adapter.name=="demo" else "runtime checked","detail":"PostFader V10: fader, pan, name, mute, stereo separation and loaded effect parameters; approval plus independent readback."},
                 {"name":"Plugin workbench","status":"implemented","detail":"Bounded read-only parameter search with high-index pagination; observation-bound normalized or explicit dB/Hz/ms/percent previews. Display searches require stopped transport and separate approval."},
                 {"name":"Windows effect insertion","status":"experimental","detail":"Native Win32 Add menu only; isolated empty destination; manual fallback when not exposed."},
+                {"name":"Native export acceptance checklist","status":"implemented","detail":"Persistent desktop-only observations, verified capture/review binding, and privacy-filtered progress or completed reports. No automatic qualification or new DAW authority."},
                 {"name":"Manual FL export intake","status":"implemented","detail":"One-shot, desktop-authorized local folder watch with verified copy, cancellation and before/after handoff. Does not trigger FL rendering or prove export provenance."},
                 {"name":"Before / after audio review","status":"implemented","detail":"Imported paired exports, conservative timing checks, measured attenuation-only A/B, section deltas and saved human preferences. No live capture or causal-quality claim."},
                 {"name":"Audio analysis + WAV finishing","status":"implemented","detail":"Local exported audio; gated LUFS, oversampled-peak estimate, real A/B files."},

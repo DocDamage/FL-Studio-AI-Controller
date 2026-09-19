@@ -4,6 +4,13 @@ This is the release gate for the manual FL export workflow. It is deliberately s
 
 The validator does **not** control FL, choose an export folder, press Render, or upgrade watched-file evidence into causal proof. It only validates a record of observations made during the native session.
 
+## In-app checklist
+
+Use **Connection & setup → Native export test checklist** to save observations,
+export progress, and verify selected capture/review evidence before exporting a
+completed record. See [the workbench guide](ACCEPTANCE_WORKBENCH.md). The manual
+JSON procedure below remains supported.
+
 ## Native session
 
 1. Copy `evidence/RENDER_ACCEPTANCE_TEMPLATE.json` to a writable evidence file; keep the template unchanged.
