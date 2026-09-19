@@ -52,7 +52,6 @@ class SavedRenderController:
     def __init__(self, assets, *, manager=None, request_factory=None):
         self.assets = assets
         self.root = (assets.exports / "saved-project-renders").resolve()
-        self.root.mkdir(parents=True, exist_ok=True)
         self._manager_instance = manager
         self._request_factory = request_factory
         self._lock = threading.RLock()
@@ -216,6 +215,7 @@ class SavedRenderController:
                 raise PlanError("Configured FL Studio application does not exist") from exc
 
         source_hash = file_hash(source)
+        self.root.mkdir(parents=True, exist_ok=True)
         manager = self._manager()
         upstream = self._build_upstream_request(
             project_path=str(source),
