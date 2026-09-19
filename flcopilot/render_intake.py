@@ -78,7 +78,9 @@ def _scan(root):
                     raise PlanError("Render folder has too many entries; choose a smaller export folder")
                 if Path(entry.name).suffix.lower() not in AUDIO_SUFFIXES:
                     continue
-                value = entry.stat(follow_symlinks=False)
+                # Windows DirEntry.stat reports zero dev/inode/link counts.
+                # Fetch fresh no-follow metadata; do not weaken the link guard.
+                value = os.stat(root / entry.name, follow_symlinks=False)
                 if _linked(value) or (stat.S_ISREG(value.st_mode) and value.st_nlink != 1):
                     raise PlanError("Render audio must not be a symbolic link, reparse point or hard link")
                 if stat.S_ISREG(value.st_mode):

@@ -12,7 +12,7 @@ reproducible. The archive contains tracked source, not the user's workspace or a
 Validation in this Linux environment:
 
 - Original source baseline: 380 pytest tests passed.
-- Final suite: 435 pytest tests passed (55 new cases).
+- Final suite: 437 pytest tests passed (57 new cases).
 - Real app/diagnostics/MCP subprocess validation passed, including watched WAV
   capture, persisted provenance, cancellation and measured review outputs.
 - New export-workflow browser harness: 15 checks passed, zero page errors.
@@ -30,3 +30,18 @@ Machine-readable evidence is in `evidence/render_ui_validation.json`,
 Historical release manifests/build reports are unchanged; they do not describe
 this unreleased development increment. Fresh distribution packages must generate
 their own current manifest, not claim the old release manifest validates new files.
+
+## Windows CI correction
+
+The initial PR run (35460797343) passed on Ubuntu but failed 12 intake tests on
+Windows. The cause was reliance on cached `os.DirEntry.stat()` data: on Windows,
+Python documents its device, inode and link-count attributes as zero. Intake now
+uses fresh `os.stat(..., follow_symlinks=False)` data instead; the link guard is
+not relaxed. Two new regression tests demonstrate failure before the correction
+and success after it, including an out-of-date directory-entry cache.
+
+Reference: https://docs.python.org/3.13/library/os.html#os.DirEntry.stat
+
+After the correction, the Linux suite passed 437 tests and the real process smoke
+passed again. Final Windows/Linux CI results are recorded in PR #3; do not treat
+the earlier failing run as the final result, or CI as native FL acceptance.
