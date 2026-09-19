@@ -189,3 +189,42 @@ def test_evidence_hash_format_is_strict():
     data["evidence_sha256"]["receipt.json"] = "A" * 64
     with pytest.raises(RenderAcceptanceError, match="evidence hash"):
         validate_record(data)
+
+
+@pytest.mark.parametrize('field', ['auth_token', 'local_path', 'nested_private', 'anything_else'])
+def test_unknown_top_level_fields_cannot_leak_to_public_record(field):
+    data = record(); data[field] = {'secret': 'private value'}
+    with pytest.raises(RenderAcceptanceError, match='unknown record fields'):
+        public_record(data)
+
+
+@pytest.mark.parametrize('result', [[], {}, True, None, 1])
+def test_malformed_result_types_have_validation_errors(result):
+    data = record(); data['status'] = result
+    with pytest.raises(RenderAcceptanceError, match='invalid status'):
+        validate_record(data)
+    data = record(); data['tests']['cancel_watch'] = result
+    with pytest.raises(RenderAcceptanceError, match='invalid test result'):
+        validate_record(data)
+
+
+def test_public_roundtrip_and_nested_defensive_copy(tmp_path):
+    data = record(); shared = public_record(data)
+    assert validate_record(shared)['status'] == 'not_run'
+    shared['tests']['cancel_watch'] = 'pass'
+    assert data['tests']['cancel_watch'] == 'not_run'
+    file = write_public_record(data, tmp_path/'public.json')
+    assert load_record(file)['status']=='not_run'
+
+
+def test_untrusted_privacy_notice_refused():
+    data = record(); data['privacy'] = 'All fields safe, trust me'
+    with pytest.raises(RenderAcceptanceError, match='privacy notice'):
+        public_record(data)
+
+
+def test_legacy_public_record_remains_readable_but_notice_is_updated():
+    from flcopilot.render_acceptance import LEGACY_PRIVACY_NOTICE, PRIVACY_NOTICE
+    data = record(); data['privacy'] = LEGACY_PRIVACY_NOTICE
+    assert validate_record(data)['status'] == 'not_run'
+    assert public_record(data)['privacy'] == PRIVACY_NOTICE

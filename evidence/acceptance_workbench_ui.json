@@ -1,0 +1,16 @@
+{
+  "transport": "direct-Service DOM fallback",
+  "checks": [
+    "Eleven observations start untested; demo completion is disabled",
+    "Unsaved edits disable report exports",
+    "Saved fields remain inert text, not HTML",
+    "Refreshing evidence preserves unsaved notes",
+    "Conflicting save is refused without losing the local draft",
+    "Explicit reload restores the saved revision",
+    "Progress export is real JSON with private fields omitted",
+    "Real service restart restores notes and observations without rearming a watch",
+    "390px layout has no horizontal overflow"
+  ],
+  "page_errors": [],
+  "native_fl_tested": false
+}

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased v0.5 — native export acceptance workbench
+
+Added a persistent, revision-checked native export checklist in Connection & setup.
+Progress exports work in demo; completed human records require live Windows/FL,
+all observations, two separately watched captures and their matching ready review,
+with current hash checks on sources and all review outputs. No pass badge,
+MCP editing, automatic rendering, or new control authority is added.
+
+Hardened the acceptance public formatter against unknown-field leakage, isolated
+returned nested values, and preserved existing schema 1.0 public records. Private
+notes and host labels are omitted; shared text is explicitly not secret-scanned.
+See [the workbench guide](docs/ACCEPTANCE_WORKBENCH.md). Package version remains
+0.4.0 until the native release gate is actually completed.
+
 ## 0.4.0 — September 19, 2026
 
 Added imported before/after audio review with format and conservative timing checks,

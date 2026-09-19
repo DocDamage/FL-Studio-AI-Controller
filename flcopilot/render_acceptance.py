@@ -5,6 +5,7 @@ human-recorded native session and can emit a privacy-filtered shareable record.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -26,6 +27,20 @@ REQUIRED_TESTS = (
     "stored_copy_hash_recheck",
 )
 PRIVATE_FIELDS = {"project_label", "export_folder", "interface_and_driver", "private_notes"}
+RECORD_FIELDS = {
+    "schema_version", "status", "date", "windows_build", "fl_studio_build",
+    "python_version", "postfader_version", "app_mode", "saved_project_copy_confirmed",
+    "project_label", "export_folder", "interface_and_driver", "private_notes",
+    "tests", "captures", "notes", "evidence_sha256", "privacy",
+}
+PRIVACY_NOTICE = (
+    "Private host fields omitted. User-entered notes, version text and evidence names "
+    "remain; review these before sharing. No audio or project contents are attached."
+)
+LEGACY_PRIVACY_NOTICE = (
+    "Project label, export folder, interface/driver and private notes omitted. "
+    "No local paths, auth tokens, project contents or audio are included by this formatter."
+)
 MAX_RECORD_BYTES = 256 * 1024
 MAX_CAPTURE_BYTES = 300 * 1024 * 1024
 
@@ -82,9 +97,13 @@ def _capture(value: Any, index: int) -> dict[str, Any]:
 def validate_record(data: Any) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise RenderAcceptanceError("record must be an object")
+    if set(data) - RECORD_FIELDS:
+        raise RenderAcceptanceError("unknown record fields")
+    if "privacy" in data and data["privacy"] not in (PRIVACY_NOTICE, LEGACY_PRIVACY_NOTICE):
+        raise RenderAcceptanceError("invalid privacy notice")
     if data.get("schema_version") != SCHEMA_VERSION:
         raise RenderAcceptanceError("unsupported schema_version")
-    if data.get("status") not in RESULTS:
+    if not isinstance(data.get("status"), str) or data["status"] not in RESULTS:
         raise RenderAcceptanceError("invalid status")
 
     passing = data["status"] == "pass"
@@ -121,7 +140,7 @@ def validate_record(data: Any) -> dict[str, Any]:
     if unknown:
         raise RenderAcceptanceError("unknown tests: " + ", ".join(sorted(unknown)))
     for name, result in tests.items():
-        if result not in RESULTS:
+        if not isinstance(result, str) or result not in RESULTS:
             raise RenderAcceptanceError(f"invalid test result: {name}")
     if passing and any(tests[name] != "pass" for name in REQUIRED_TESTS):
         raise RenderAcceptanceError("overall pass requires every required render test to pass")
@@ -181,11 +200,9 @@ def hash_evidence(path: str | Path) -> str:
 
 def public_record(data: Any) -> dict[str, Any]:
     valid = validate_record(data)
-    out = {key: value for key, value in valid.items() if key not in PRIVATE_FIELDS}
-    out["privacy"] = (
-        "Project label, export folder, interface/driver and private notes omitted. "
-        "No local paths, auth tokens, project contents or audio are included by this formatter."
-    )
+    out = {key: copy.deepcopy(value) for key, value in valid.items()
+           if key in RECORD_FIELDS - PRIVATE_FIELDS}
+    out["privacy"] = PRIVACY_NOTICE
     return out
 
 
