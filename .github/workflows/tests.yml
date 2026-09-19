@@ -8,6 +8,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Archive exact source under test
+        if: matrix.os == 'ubuntu-latest'
+        run: git archive --format=zip --output=source-under-test.zip HEAD
+      - name: Retain source snapshot
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-${{ github.sha }}
+          path: source-under-test.zip
+          retention-days: 7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
