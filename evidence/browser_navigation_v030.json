@@ -1,0 +1,8 @@
+{
+  "version": "0.3.0",
+  "ordinary_localhost_navigation": "blocked: net::ERR_BLOCKED_BY_ADMINISTRATOR",
+  "browser_network_policy_modified": false,
+  "fallback": "In-memory DOM harness using real Service methods; HTTP independently tested",
+  "live_fl_tested": false,
+  "private_url_or_token_retained": false
+}

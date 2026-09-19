@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — September 19, 2026
+
+Added the plugin workbench: read-only padded-parameter search, bounded pagination,
+expiring observation tokens, and normalized or explicit dB/Hz/ms/percent previews.
+Displayed-unit writes require stopped transport, remain isolated and approved, and
+receive independent displayed-value readback plus separately approved restores.
+
+Added two MCP tools (14 total), a fictional high-index demo effect, authenticated
+routes, UI coverage indicators, and unit/pagination/staleness/adapter/HTTP tests.
+The legacy parameter endpoint now shares executor serialization. The Windows/Linux
+CI matrix also exercises actual simulator and MCP processes. Dependency pins and
+PostFader revision are unchanged. This is not live FL Studio qualification.
+
 ## 0.2.0 — September 17, 2026
 
 Cumulative development source. Not a live-qualified Windows or FL Studio release.

@@ -18,7 +18,7 @@ def verify_unchanged(operation, before, after):
     changed = {
         "volume": {"volume_db", "volume_normalized"},
         "pan": {"pan"}, "rename": {"name"}, "mute": {"muted"},
-        "stereo": {"stereo_separation"}, "parameter": set(),
+        "stereo": {"stereo_separation"}, "parameter": set(), "parameter_display": set(),
         "load_effect": {"plugins"},
     }[operation.kind]
     old = {key: value for key, value in before.items() if key not in changed}

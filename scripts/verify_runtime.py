@@ -31,7 +31,7 @@ def main():
                     raise RuntimeError("App process exited before writing its descriptor")
                 time.sleep(.1)
             status = http_call(workspace, "/api/status")
-            assert status["demo"] and status["version"] == "0.2.0"
+            assert status["demo"] and status["version"] == "0.3.0"
             doctor = subprocess.run([sys.executable, "-m", "flcopilot", "--diagnose", "--workspace", tmp],
                                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=40)
             assert doctor.returncode == 2, "Simulator must never pass live qualification"
@@ -43,17 +43,27 @@ def main():
                 {"jsonrpc": "2.0", "method": "notifications/initialized"},
                 {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
                 {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "copilot_status", "arguments": {}}},
+                {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "copilot_plugin_scan", "arguments": {"track":6,"slot":0,"start":2048}}},
             ]
             relay = subprocess.run([sys.executable, "-m", "flcopilot", "--mcp", "--workspace", tmp], cwd=ROOT,
                                    env=env, input="\n".join(json.dumps(m) for m in messages)+"\n",
                                    capture_output=True, text=True, timeout=20)
             assert relay.returncode == 0
             replies = [json.loads(line) for line in relay.stdout.splitlines()]
-            assert len(replies) == 3 and len(replies[1]["result"]["tools"]) == 12
+            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == 14
             assert json.loads(replies[2]["result"]["content"][0]["text"])["demo"]
+            scan_job = json.loads(replies[3]["result"]["content"][0]["text"])
+            for _ in range(100):
+                scan = http_call(workspace, "/api/jobs/"+scan_job["job"])
+                if scan["status"] == "complete": break
+                if scan["status"] == "error": raise RuntimeError(scan["error"])
+                time.sleep(.05)
+            assert scan["status"] == "complete" and scan["result"]["parameters"][0]["index"] == 2049
+            assert not http_call(workspace, "/api/history")
             summary = {"app_version": status["version"], "app_process": "passed_simulator",
                        "diagnostics_process": "passed; simulator correctly returned not-ready exit 2",
-                       "mcp_stdio": "passed; 12 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
+                       "mcp_stdio": "passed; 14 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
+                       "plugin_scan_via_mcp_process": "passed; observed high index 2049, no control plans created",
                        "live_fl_tested": False, "windows_process_tested": os.name == "nt"}
             print(json.dumps(summary, indent=2))
         finally:

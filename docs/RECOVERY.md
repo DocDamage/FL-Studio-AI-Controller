@@ -37,3 +37,13 @@ An indistinguishable plugin replacement can defeat that identity check; hidden
 state, automation, MIDI, routing, arrangements and audio are not restored. Save
 project versions manually and avoid simultaneous edits/other controllers. Even a
 technically verified inverse write does not establish that the music sounds right.
+
+## Displayed-unit controls in v0.3
+
+A verified displayed-unit operation captures the original display string as well
+as the reported normalized value. Its restore preview converts the original
+display into the original requested unit and reuses that operation's explicit
+tolerance. It remains an isolated solver operation, requires stopped playback and
+recording, and is approved independently. Unsupported original display ranges or
+missing state refuse a restore; they do not fall back to a guessed knob position.
+Existing v0.2 numeric-operation records retain their original JSON shape.

@@ -112,3 +112,23 @@ never opens a MIDI port. The live handshake may establish the app-owned connecti
 no second controller or write transition is created. Diagnostic exports use an
 allowlist omitting local-only data. `doctor_client.py` and `scripts/doctor.py` relay
 to the already-running authenticated app, avoiding another MIDI owner.
+
+## v0.3 plugin workbench
+
+`PluginWorkbench` uses the existing executor mutex for bounded parameter pages and
+previews. Each request scans at most 2,048 raw indices in pages of at most 128;
+all reported raw positions must be accounted for before publishing that window.
+Tokens bind the session, stable track projection, plugin name and returned control
+values. At most 16 observations live in memory, for five minutes each. They are
+not approval, persistent IDs or cross-restart capabilities.
+
+`Operation.value` gains a strict `DisplayTarget` alternative only for the isolated
+`parameter_display` kind. Existing numeric-operation JSON retains its shape. The
+writer passes an explicit unit, tolerance and both numeric/display before-state to
+PostFader's existing display setter. Independent readback converts explicit display
+prefixes and checks the requested unit and tolerance; it does not bless stale
+normalized getters. Restore uses original displayed units and the same executor.
+
+New authenticated async routes and MCP tools call this service; no alternate writer
+or MIDI connection exists. The browser treats plugin text as data and invalidates
+its observation when selection/session refreshes race a scan.

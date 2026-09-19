@@ -1,16 +1,17 @@
-# Known limitations — v0.2.0
+# Known limitations — v0.3.0
 
 This release implements a useful guarded foundation, not the entire proposed DAW
 agent. The distinction is intentional and visible in the capability ledger.
 
-- No actual Windows or FL Studio run was possible in the build environment.
-  The pinned external PostFader package was not installed/exercised in this build; source-reviewed
+- No live FL Studio run was possible in the Linux build environment. GitHub CI
+  core/simulator runs are not Windows FL, MIDI or plugin-insertion acceptance.
+  The pinned external PostFader package was not installed/exercised here; source-reviewed
   API contract doubles are not equivalent to running its complete test suite.
 - The native Windows Add-menu adapter is experimental. FL custom-drawn menus may
   expose nothing usable, in which case automatic loading remains unavailable.
   There is no coordinate/OCR/vision fallback that pretends this limitation is fixed.
 - The exposed controls are fader dB, pan, rename, mute/unmute, stereo separation, loaded
-  effect normalized parameters, and isolated experimental effect insertion. Routing,
+  effect normalized/displayed-unit parameters, and isolated experimental effect insertion. Routing,
   solo, plugin removal/
   reorder, generator insertion, note editing, Playlist editing and arrangement
   manipulation are not exposed by this app, even where upstream has broader tools.
@@ -51,3 +52,13 @@ agent. The distinction is intentional and visible in the capability ledger.
   do not establish audio capture, plugin insertion, latency or artistic quality.
   The control-evidence lookup covers the most recent 50 journal plans for the current
   bridge session; historical evidence beyond that bound is not promoted implicitly.
+
+- Plugin workbench scans are bounded windows, not persistent complete inventories.
+  A search only covers the examined window. Nameless controls, unsupported/ambiguous
+  display units, indices beyond 65,535 and missing readbacks are not promoted into
+  editable engineering-unit controls. Observations expire after five minutes and
+  are evicted after 16 retained scans.
+- Display searches move intermediate values and cannot be interrupted inside an
+  in-flight bridge call. Stopped-transport checks reduce risk but cannot prevent
+  concurrent manual playback or hidden plugin changes. Reachability, normalized
+  getter freshness, whole-preset restoration and audible improvement are not promised.

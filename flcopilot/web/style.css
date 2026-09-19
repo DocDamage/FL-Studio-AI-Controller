@@ -14,3 +14,14 @@
 .control-proof p{font-size:12px}.restore-row{display:flex;align-items:center;gap:14px;margin:16px 0 6px}
 @media(max-width:980px){.control-proof{grid-template-columns:1fr 160px}.control-proof>button{grid-column:1/-1}}
 @media(max-width:680px){.diagnostic-grid,.control-proof{grid-template-columns:1fr}.restore-row{align-items:flex-start;flex-direction:column}.control-proof>button{grid-column:auto}}
+
+/* v0.3 observed-parameter workbench; tables scroll inside their own panel. */
+.workbench-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+.workbench-layout>*{min-width:0}.workbench-control .eyebrow{margin-bottom:12px}
+.workbench-control h2,.workbench-control p{overflow-wrap:anywhere}
+.workbench-readback{border:1px solid var(--line);background:var(--bg);padding:18px;border-radius:8px;margin:20px 0}
+.workbench-readback small,.workbench-readback span{display:block;color:var(--muted);font-size:11px}
+.workbench-readback strong{display:block;color:var(--green);font:24px/1.6 Consolas,monospace;overflow-wrap:anywhere}
+.parameter-table td{white-space:normal;overflow-wrap:anywhere}.parameter-table td:first-child{min-width:155px}
+.parameter-table th{white-space:nowrap}#wb-coverage{min-height:64px}#wb-rows .empty{white-space:normal}
+@media(max-width:1100px){.workbench-layout{grid-template-columns:minmax(0,1fr)}.workbench-control{max-width:680px}}

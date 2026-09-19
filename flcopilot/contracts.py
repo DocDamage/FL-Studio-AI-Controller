@@ -9,17 +9,33 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True, allow_inf_nan=False)
 
+class DisplayTarget(Strict):
+    amount: float = Field(ge=-120., le=192000.)
+    unit: Literal["dB", "Hz", "ms", "percent"]
+    tolerance: float = Field(ge=0.001, le=100.)
+
+    @model_validator(mode="after")
+    def bounds(self):
+        low, high, max_tolerance = {"dB": (-120., 24., 1.), "Hz": (0., 192000., 100.),
+                                    "ms": (0., 60000., 10.), "percent": (0., 100., 1.)}[self.unit]
+        if not low <= self.amount <= high or self.tolerance > max_tolerance:
+            raise ValueError("Display target or tolerance exceeds the supported unit bounds")
+        return self
+
 class Operation(Strict):
-    kind: Literal["volume", "pan", "rename", "parameter", "load_effect", "mute", "stereo"]
+    kind: Literal["volume", "pan", "rename", "parameter", "load_effect", "mute", "stereo", "parameter_display"]
     track: int = Field(ge=0, le=999)
-    value: float | str | bool
+    value: float | str | bool | DisplayTarget
     slot: int | None = Field(default=None, ge=0, le=9)
     parameter: int | None = Field(default=None, ge=0, le=65535)
     reason: str = Field(default="Explicit user adjustment", max_length=400)
 
     @model_validator(mode="after")
     def check(self):
-        if self.kind in ("rename", "load_effect"):
+        if self.kind == "parameter_display":
+            if not isinstance(self.value, DisplayTarget):
+                raise ValueError("Display writes need an amount, explicit unit and tolerance")
+        elif self.kind in ("rename", "load_effect"):
             if not isinstance(self.value, str) or not self.value.strip():
                 raise ValueError("A nonempty exact name is required")
             if len(self.value) > (64 if self.kind == "rename" else 256):
@@ -30,12 +46,12 @@ class Operation(Strict):
             if type(self.value) is not bool:
                 raise ValueError("Mute requires an explicit true/false state, not a toggle")
         else:
-            if isinstance(self.value, str) or isinstance(self.value, bool):
+            if type(self.value) not in (float, int):
                 raise ValueError("Numeric value required")
             low, high = {"volume":(-60.,6.), "pan":(-1.,1.), "parameter":(0.,1.), "stereo":(-1.,1.)}[self.kind]
             if not low <= self.value <= high:
                 raise ValueError(f"{self.kind} must be between {low} and {high}")
-        if self.kind == "parameter":
+        if self.kind in ("parameter", "parameter_display"):
             if self.slot is None or self.parameter is None:
                 raise ValueError("Parameter operations require slot and parameter indices")
         elif self.slot is not None or self.parameter is not None:
@@ -68,11 +84,13 @@ class Plan(Strict):
     def check(self):
         if len(self.operations) != len(self.before):
             raise ValueError("Every operation requires its own before-state")
-        keys = [(o.track, o.kind, o.slot, o.parameter) for o in self.operations]
+        keys = [(o.track, "parameter" if o.kind == "parameter_display" else o.kind, o.slot, o.parameter) for o in self.operations]
         if len(keys) != len(set(keys)):
             raise ValueError("One write per target/control per plan")
         if any(o.kind == "load_effect" for o in self.operations) and len(keys) != 1:
             raise ValueError("Plugin insertion must be an isolated plan")
+        if any(o.kind == "parameter_display" for o in self.operations) and len(keys) != 1:
+            raise ValueError("A display-value search must be an isolated plan")
         return self
     @property
     def digest(self):

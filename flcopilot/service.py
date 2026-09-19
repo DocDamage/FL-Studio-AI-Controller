@@ -16,6 +16,8 @@ class Service:
         self.adapter=adapter
         self.journal=Journal(self.assets.root/"journal.sqlite3")
         self.executor=Executor(adapter,self.journal)
+        from .plugin_workbench import PluginWorkbench
+        self.workbench=PluginWorkbench(self.executor)
         self.jobs=Jobs(); self.audio_lock=threading.Lock()
         self.planner=LocalPlanner(endpoint)
         self.last_snapshot=None
@@ -36,6 +38,7 @@ class Service:
         return {"live_qualification":"No Windows/FL live-host acceptance was performed for this release.",
             "features":[
                 {"name":"Session inspection + mixer writes","status":"demo" if self.adapter.name=="demo" else "runtime checked","detail":"PostFader V10: fader, pan, name, mute, stereo separation and loaded effect parameters; approval plus independent readback."},
+                {"name":"Plugin workbench","status":"implemented","detail":"Bounded read-only parameter search with high-index pagination; observation-bound normalized or explicit dB/Hz/ms/percent previews. Display searches require stopped transport and separate approval."},
                 {"name":"Windows effect insertion","status":"experimental","detail":"Native Win32 Add menu only; isolated empty destination; manual fallback when not exposed."},
                 {"name":"Audio analysis + WAV finishing","status":"implemented","detail":"Local exported audio; gated LUFS, oversampled-peak estimate, real A/B files."},
                 {"name":"MIDI sketches","status":"implemented","detail":"Deterministic file export; manual FL import."},
@@ -135,5 +138,16 @@ class Service:
         from .diagnostics import diagnose,export_report
         report=diagnose(self)
         return export_report(self,report) if export else report
+    def plugin_scan(self,data):
+        from .plugin_workbench import ScanRequest
+        return self.workbench.scan(ScanRequest.model_validate_json(__import__('json').dumps(data)))
+    def plugin_preview(self,data):
+        from .plugin_workbench import ParameterPreview
+        return self.workbench.preview(ParameterPreview.model_validate_json(__import__('json').dumps(data)))
+    def parameters(self,track,slot):
+        from .plugin_workbench import ScanRequest
+        request=ScanRequest(track=track,slot=slot)
+        with self.executor.mutex:
+            return self.adapter.parameters(request.track,request.slot)
     def close(self):
         self.executor.stop_event.set(); self.jobs.close(); self.journal.close()

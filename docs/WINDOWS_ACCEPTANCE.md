@@ -91,3 +91,20 @@ with a plugin-insertion source run. Only complete verified control runs in the s
 session are eligible. A failed post-dispatch read must latch unknown outcome, not
 be classified as an unexecuted command. Acknowledging an uncertain state never
 retroactively makes the uncertain run restorable.
+
+## v0.3 workbench acceptance (not yet performed against FL)
+
+On a saved project copy with one manually loaded effect, inspect its actual names
+and raw indices in Plugin workbench. Confirm that a small window is marked partial
+and that Next window reaches controls outside the first 128 positions. Stop FL
+playback and recording, select one explicitly unit-bearing control, and prepare a
+small bounded change. Verify the preview without approving; the FL control must
+not have moved. Start playback and confirm that applying the preview is refused.
+Stop playback, prepare a fresh preview, approve, and compare both the real displayed
+value and receipt. Then separately preview and approve restoration of that value.
+
+Also test a plugin without supported display text: no unit should be guessed. Test
+a changed plugin/parameter after scanning: the stale preview must refuse. Capture
+evidence locally without including private project names, tokens, paths or audio
+in public issues. Passing these steps qualifies only those observed controls on
+that host, not other plugins, live audio capture or musical quality.

@@ -55,6 +55,25 @@ class PostFaderAdapter:
             rows=[p for p in page.parameters if p.index==index and p.classification!="padding_candidate"]
             if len(rows)!=1 or rows[0].normalized_value is None: raise NotDispatched("No named parameter readback at that index")
             return {"plugin":page.plugin.name,"name":rows[0].reported_name,"value":rows[0].normalized_value}
+    def parameter_page(self,track,slot,offset,limit):
+        with self.io:
+            return self.inspector.plugin_parameters(track_index=track,slot_index=slot,
+                offset=offset,limit=limit).model_dump(mode="json")
+    def display_parameter(self,track,slot,index):
+        with self.io:
+            page=self.parameter_page(track,slot,index,1)
+            rows=[p for p in page["parameters"] if p["index"]==index and p.get("classification")!="padding_candidate"]
+            if len(rows)!=1 or not rows[0].get("reported_name", "").strip():
+                raise NotDispatched("No named display parameter at that index")
+            from .controls import finite_control
+            p=rows[0]
+            if not finite_control(p.get("normalized_value")) or not 0 <= p["normalized_value"] <= 1:
+                raise NotDispatched("No finite normalized before-state for the display control")
+            return {"plugin":page["plugin"]["name"],"name":p["reported_name"],
+                "value":p["normalized_value"],"display":p.get("display_text")}
+    def transport_state(self):
+        with self.io:
+            return self.inspector.transport_state().model_dump(mode="json")
     def begin(self,session):
         with self.io:
             self._gate_owned=False
@@ -103,6 +122,21 @@ class PostFaderAdapter:
                     parameter_index=op.parameter,normalized_value=op.value,expected_before=expected)
                 if result.plugin_name != observed["plugin"] or result.parameter_name != observed["name"]:
                     raise RuntimeError("Parameter receipt identifies a different plugin/control; outcome unknown")
+            elif op.kind=="parameter_display":
+                from .units import require_display_ready, display_in_unit
+                from fl_studio_mcp.contracts import ExpectedPluginParameterState
+                require_display_ready(self)
+                observed=self.display_parameter(op.track,op.slot,op.parameter)
+                if observed != before["parameter"]:
+                    raise NotDispatched("Display parameter identity or before-state changed")
+                display_in_unit(observed["display"],op.value.unit)
+                expected=ExpectedPluginParameterState(normalized_value=observed["value"],display_text=observed["display"])
+                result=self.writer.set_plugin_parameter_display(**common,slot_index=op.slot,
+                    parameter=op.parameter,target_value=op.value.amount,target_unit=op.value.unit,
+                    tolerance=op.value.tolerance,expected_before=expected)
+                if (result.plugin_name != observed["plugin"] or result.parameter_name != observed["name"]
+                        or result.parameter_index != op.parameter or result.requested_unit != op.value.unit):
+                    raise RuntimeError("Display receipt identifies a different plugin/control/unit; outcome unknown")
             elif op.kind=="load_effect":
                 if not self.windows_menu_enabled: raise NotDispatched("Enable the experimental Windows menu adapter in Setup first.")
                 if os.name != "nt": raise NotDispatched("Windows menu adapter requires Windows")

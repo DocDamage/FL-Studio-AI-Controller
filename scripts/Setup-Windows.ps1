@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent $PSScriptRoot)
 $Root = (Get-Location).Path
 function Check-Native([string]$Message) { if ($LASTEXITCODE -ne 0) { throw $Message } }
-Write-Host "FL Studio AI Copilot 0.2.0 - Windows source setup" -ForegroundColor Green
+Write-Host "FL Studio AI Copilot 0.3.0 - Windows source setup" -ForegroundColor Green
 Write-Host "This creates a local .venv and downloads Python dependencies. No FL project is changed."
 $Python = Join-Path $Root '.venv\Scripts\python.exe'
 if (-not (Test-Path $Python)) {

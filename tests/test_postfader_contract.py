@@ -107,3 +107,58 @@ def test_stereo_v10_explicit_state_contract(adapter):
     a.writer.set_mixer_stereo_separation=setter
     result=a.execute(Operation(kind='stereo',track=1,value=.5),{'track':{'stereo_separation':.1}},c['session_fingerprint'])
     assert result['verified']
+
+class DisplayReceipt(Receipt):
+    parameter_index:int=12
+    requested_unit:str='ms'
+
+
+def test_display_writer_uses_actual_v10_keyword_contract(adapter):
+    from flcopilot.contracts import DisplayTarget
+    a,c=adapter;c['plugin_display_units']=True
+    a.transport_state=lambda:dict(playing=False,recording=False)
+    observed=dict(plugin='Effect',name='Drive',value=.5,display='0.01 seconds')
+    a.display_parameter=lambda *args:observed.copy()
+    def setter(*,track_index,slot_index,parameter,target_value,target_unit,tolerance,
+               allow_master,session_fingerprint,expected_before):
+        assert (track_index,slot_index,parameter,target_value,target_unit,tolerance)==(1,0,12,20.,'ms',.1)
+        assert not allow_master and session_fingerprint==c['session_fingerprint']
+        assert expected_before.model_dump()==dict(normalized_value=.5,display_text='0.01 seconds')
+        return DisplayReceipt()
+    a.writer.set_plugin_parameter_display=setter
+    op=Operation(kind='parameter_display',track=1,slot=0,parameter=12,
+        value=DisplayTarget(amount=20.,unit='ms',tolerance=.1))
+    assert a.execute(op,{'parameter':observed},c['session_fingerprint'])['verified']
+
+
+@pytest.mark.parametrize('mismatch',['parameter_index','requested_unit','plugin_name','parameter_name'])
+def test_display_receipt_mismatch_is_unknown_after_dispatch(adapter,mismatch):
+    from flcopilot.contracts import DisplayTarget
+    a,c=adapter;c['plugin_display_units']=True
+    a.transport_state=lambda:dict(playing=False,recording=False)
+    observed=dict(plugin='Effect',name='Drive',value=.5,display='10 ms')
+    a.display_parameter=lambda *args:observed.copy()
+    changed={'parameter_index':13,'requested_unit':'Hz','plugin_name':'Wrong','parameter_name':'Wrong'}
+    a.writer.set_plugin_parameter_display=lambda **kwargs:DisplayReceipt(**{mismatch:changed[mismatch]})
+    op=Operation(kind='parameter_display',track=1,slot=0,parameter=12,
+        value=DisplayTarget(amount=20.,unit='ms',tolerance=.1))
+    with pytest.raises(RuntimeError,match='outcome unknown'):a.execute(op,{'parameter':observed},c['session_fingerprint'])
+
+
+def test_raw_page_adapter_does_not_invent_a_new_upstream_api(adapter):
+    a,c=adapter;calls=[]
+    class Page(BaseModel):
+        parameters:list=[]
+    def reader(*,track_index,slot_index,offset,limit):
+        calls.append((track_index,slot_index,offset,limit));return Page()
+    a.inspector=types.SimpleNamespace(plugin_parameters=reader)
+    assert a.parameter_page(2,3,4096,128)=={'parameters':[]}
+    assert calls==[(2,3,4096,128)]
+
+
+def test_display_readback_preserves_units_and_rejects_padding(adapter):
+    a,c=adapter
+    a.parameter_page=lambda *args:{'plugin':{'name':'Effect'},'parameters':[
+        {'index':12,'reported_name':'Drive','normalized_value':.5,'display_text':'1 kHz','classification':'reported'}]}
+    assert a.display_parameter(1,0,12)==dict(plugin='Effect',name='Drive',value=.5,display='1 kHz')
+    with pytest.raises(NotDispatched):a.display_parameter(1,0,13)

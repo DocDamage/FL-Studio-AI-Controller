@@ -1,15 +1,20 @@
-# FL Studio AI Copilot — v0.2.0
+# FL Studio AI Copilot — v0.3.0
 
 **Windows-first local companion, development source release.** The code runs a local
 browser interface, a single guarded executor, an audio-finishing workspace, and an
 optional MCP relay. It is not a compiled VST3, not a signed Windows application,
 and not a claim of better artistic mastering than Ozone.
 
-**Read the evidence boundary:** core/fixture/HTTP/audio tests were executed on Linux
-with Python 3.13. Windows, FL Studio, virtual MIDI, the actual PostFader distribution,
-and local model inference were not available for live qualification. The complete
-record is in [BUILD_REPORT.md](BUILD_REPORT.md). Screenshots use an explicitly
-labeled simulator; audio results come from generated synthetic fixtures.
+**Read the evidence boundary:** this development pass ran the core, HTTP, audio,
+contract-double and real simulator-process checks on Linux. The previous repository
+CI passed its core suite on Windows and Linux; the updated workflow also runs
+simulator process checks. Neither is live FL Studio, virtual MIDI, native plugin-menu
+or local-model qualification. The record is in [BUILD_REPORT.md](BUILD_REPORT.md).
+Screenshots are explicitly simulated; audio fixtures are synthetic.
+
+**New in v0.3:** a [Plugin workbench](docs/PLUGIN_WORKBENCH.md) for bounded,
+read-only parameter discovery and observation-bound changes in displayed units.
+See the [upgrade guide](docs/UPGRADE_v0.3.0.md) for existing installations.
 
 ## Start on Windows
 
@@ -41,7 +46,7 @@ Older versions fail the live compatibility gate; the audio workspace still works
 
 Inspection reports project/mixer data through PostFader V10. The implemented live
 adapter exposes scoped fader-dB changes, pan, renaming, explicit mute/unmute,
-stereo separation, and normalized parameter
+stereo separation, normalized parameter changes, and guarded displayed-unit
 changes for already loaded effect slots. Every approved plan binds a session,
 exact before-state, target/control, current protection locks, five-minute expiry,
 and SHA-256 digest. Master is locked by default; tempo, notes, and arrangement
@@ -56,6 +61,31 @@ EQ, masking correction, compression, routing, or a complete artistic mix.
 Receipts are committed to SQLite. If a reply is lost after dispatch, no automatic
 retry occurs; subsequent writes remain blocked until a fresh inspection and explicit
 acknowledgment. Acknowledgment is not rollback. No project is automatically saved.
+
+### New in v0.3: plugin workbench
+
+Select an actually loaded mixer effect, search its observed parameter names and
+displays, and continue through bounded raw-index windows instead of stopping at
+128 parameters. Padding and unnamed controls are excluded. Every result states
+its coverage, next index, and whether more of the map remains unread.
+
+Select a returned control and prepare an exact normalized value or an explicit
+`dB`, `Hz`, `ms`, or `percent` target with tolerance. Observed kHz and seconds are
+converted into Hz and ms; labels and ambiguous units are not guessed. Previews
+bind the scan's session, track/plugin state and parameter values, expire after
+five minutes, and still require separate Session approval.
+
+**Displayed-unit searches require stopped playback and recording** because they
+move intermediate settings. They run one at a time through the existing executor,
+then receive independent displayed-value verification. A fully verified change can
+receive a new, separately approved display-value restore. This does not restore
+hidden plugin state or promise artistic improvement.
+
+Demo insert 6 contains a deliberately fictional test effect with controls at indices
+129, 2,049 and 4,097. These are not stock-plugin mappings. The two new MCP tools,
+`copilot_plugin_scan` and `copilot_plugin_preview`, bring the relay to 14 tools.
+No dependency, MIDI client, automatic model download or new execution authority
+was added. See [Plugin workbench](docs/PLUGIN_WORKBENCH.md).
 
 ### New in v0.2: readiness and verified-control recovery
 
@@ -154,7 +184,7 @@ Weights and a llama.cpp executable are not bundled or downloaded automatically.
 The managed option avoids a separately maintained Ollama service, but is not a
 self-contained preinstalled ML distribution.
 
-An existing MCP-capable coding/assistant client can use the twelve-tool stdio relay:
+An existing MCP-capable coding/assistant client can use the fourteen-tool stdio relay:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\write_mcp_config.py
@@ -217,7 +247,7 @@ See [security](docs/SECURITY.md), [architecture](docs/ARCHITECTURE.md), and
 ```
 
 Keep the app **running** before invoking `doctor.py` or `CHECK_CONNECTION.cmd`.
-The v0.2 doctor relays to that app rather than opening its own MIDI connection.
+The doctor relays to that app rather than opening its own MIDI connection.
 Exit 0 means live bridge write preconditions are ready, not that authorization was
 granted. Exit 2 means not ready, simulator, or no running app. `--demo --diagnose`
 targets the demo workspace; an explicit `--workspace` also works.
@@ -226,8 +256,9 @@ Run `python scripts/verify_runtime.py` for a temporary simulator-process/doctor/
 smoke test. `python scripts/browser_dom_smoke.py` additionally needs Playwright and
 Chromium; its transport is a direct-Service harness, not ordinary browser launch
 acceptance. Both scripts are optional developer checks. The included
-GitHub Actions definition is a future CI recipe, not a claim that Windows CI or
-FL Studio acceptance already ran. Direct versions are recorded, but all transitive
+GitHub Actions workflow runs core and simulator-process checks on Windows and
+Linux. Consult the actual run for this commit; CI success does not establish live
+FL Studio acceptance. Direct versions are recorded, but all transitive
 packages are not hash-locked. Review installation output and run `pip check`.
 
 ## Foundations and attribution

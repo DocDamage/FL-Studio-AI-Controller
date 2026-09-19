@@ -11,6 +11,7 @@ import urllib.request
 from urllib.parse import urlsplit
 from .planner import NoRedirect
 from .contracts import PrepareRequest,MasterRequest,Approval
+from .plugin_workbench import ScanRequest,ParameterPreview
 
 def schema(props=None,required=()):
     return {"type":"object","properties":props or {},"required":list(required),"additionalProperties":False}
@@ -26,6 +27,8 @@ TOOLS=[
     {"name":"copilot_diagnostics","description":"Read-only connection checks through the running app. Returns a job for a privacy-filtered report. Does not enable writes or qualify the host by itself.","inputSchema":schema()},
     {"name":"copilot_restore_preview","description":"Prepare a compensating-control preview from one fully verified run. Does not execute. Requires unchanged captured state and a separate explicit approval; no whole-project rollback.","inputSchema":schema({"plan_id":{"type":"string","pattern":"^[a-f0-9]{32}$"}},("plan_id",))},
     {"name":"copilot_control_test_preview","description":"Prepare, never execute, exactly a 1 dB reduction on a non-master insert. Use a saved project copy. Restore is a separately approved plan.","inputSchema":schema({"track":{"type":"integer","minimum":1,"maximum":999}},("track",))},
+    {"name":"copilot_plugin_scan","description":"Read-only bounded scan of a loaded effect. Use query and start/max_indices; follow next_start when has_more. Returns a job whose result includes an expiring observation_id. Never infer control indices from names.","inputSchema":ScanRequest.model_json_schema()},
+    {"name":"copilot_plugin_preview","description":"Prepare a parameter adjustment from a current scan observation. No execution. Display mode requires explicit observed units and tolerance, and stopped transport because the solver moves intermediate settings. Separate user approval is required.","inputSchema":ParameterPreview.model_json_schema()},
     {"name":"copilot_stop","description":"Latch emergency stop; no later operation starts. In-flight writes are not undone.","inputSchema":schema()},
 ]
 
@@ -68,7 +71,7 @@ def tool_call(workspace,name,args):
         if set(args)!={"track"} or type(args["track"]) is not int or not 1<=args["track"]<=999:
             raise ValueError("A non-master insert (1–999) is required")
         return http_call(workspace,"/api/control-test-preview",args)
-    models={"copilot_prepare":(PrepareRequest,"/api/prepare"),"copilot_execute":(Approval,"/api/execute"),"copilot_master":(MasterRequest,"/api/master")}
+    models={"copilot_plugin_scan":(ScanRequest,"/api/plugin-scan"),"copilot_plugin_preview":(ParameterPreview,"/api/plugin-preview"),"copilot_prepare":(PrepareRequest,"/api/prepare"),"copilot_execute":(Approval,"/api/execute"),"copilot_master":(MasterRequest,"/api/master")}
     if name not in models: raise ValueError("Unknown tool")
     model,route=models[name]; parsed=model.model_validate_json(json.dumps(args))
     return http_call(workspace,route,parsed.model_dump(mode="json"))
@@ -80,7 +83,7 @@ def handle(workspace,msg):
     try:
         if method=="initialize":
             result={"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":False}},
-                "serverInfo":{"name":"fl-studio-ai-copilot","version":"0.2.0"},
+                "serverInfo":{"name":"fl-studio-ai-copilot","version":"0.3.0"},
                 "instructions":"Use one running desktop app. Read-only by default. Never equate demo/technical readback with audible quality. Approval must come from the user."}
         elif method=="ping": result={}
         elif method=="tools/list": result={"tools":TOOLS}

@@ -1,0 +1,10 @@
+{
+  "app_version": "0.3.0",
+  "app_process": "passed_simulator",
+  "diagnostics_process": "passed; simulator correctly returned not-ready exit 2",
+  "mcp_stdio": "passed; 14 tools; JSON-RPC-only stdout",
+  "diagnostics_control_plans_created": 0,
+  "plugin_scan_via_mcp_process": "passed; observed high index 2049, no control plans created",
+  "live_fl_tested": false,
+  "windows_process_tested": false
+}

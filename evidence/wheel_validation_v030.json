@@ -1,0 +1,17 @@
+{
+  "wheel": "fl_studio_ai_copilot-0.3.0-py3-none-any.whl",
+  "sha256": "1406759a72bc41443175929220c5cc90f51b340857f9a51a2d4f4bcf241420d7",
+  "size_bytes": 90956,
+  "wheel_crc": "passed",
+  "isolated_import": {
+    "version": "0.3.0",
+    "web_assets_present": true,
+    "package_loaded": true
+  },
+  "new_package_members": [
+    "flcopilot/plugin_workbench.py",
+    "flcopilot/units.py",
+    "flcopilot/web/workbench.js"
+  ],
+  "live_fl_tested": false
+}

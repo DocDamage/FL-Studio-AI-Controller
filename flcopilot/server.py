@@ -20,7 +20,7 @@ class LocalServer(ThreadingHTTPServer):
         self.origin=f"http://127.0.0.1:{self.port}"
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="FLCopilot/0.2"
+    server_version="FLCopilot/0.3"
     protocol_version="HTTP/1.0"
     def setup(self):
         super().setup(); self.connection.settimeout(30)
@@ -65,11 +65,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             path=urlsplit(self.path).path
-            if path in ("/","/app.js","/style.css"):
+            if path in ("/","/app.js","/workbench.js","/style.css"):
                 self._secure(auth=False)
-                name={"/":"index.html","/app.js":"app.js","/style.css":"style.css"}[path]
+                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/style.css":"style.css"}[path]
                 data=files("flcopilot").joinpath("web",name).read_bytes()
-                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
+                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
                 self._headers(200,kind,len(data)); self.wfile.write(data); return
             self._secure()
             s=self.server.service; q=parse_qs(urlsplit(self.path).query)
@@ -77,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=="/api/capabilities": return self._json(s.capabilities())
             if path=="/api/history": return self._json(s.journal.history())
             if path=="/api/assets": return self._json(s.assets.list())
-            if path=="/api/parameters": return self._json(s.adapter.parameters(int(q["track"][0]),int(q["slot"][0])))
+            if path=="/api/parameters": return self._json(s.parameters(int(q["track"][0]),int(q["slot"][0])))
             if path.startswith("/api/jobs/"): return self._json(s.jobs.get(path.rsplit("/",1)[-1]))
             if path.startswith("/api/file/"):
                 asset=path.rsplit("/",1)[-1]; target=s.assets.resolve(asset)
@@ -109,6 +109,8 @@ class Handler(BaseHTTPRequestHandler):
                 delay=data.pop("focus_handoff",False)
                 if type(delay)!=bool: raise PlanError("Boolean focus handoff required")
                 result=s.jobs.submit("Applying and verifying approved changes",lambda:s.execute(data,5. if delay else 0.))
+            elif path=="/api/plugin-scan": result=s.jobs.submit("Reading a bounded plugin parameter window",lambda:s.plugin_scan(data))
+            elif path=="/api/plugin-preview": result=s.jobs.submit("Checking observed plugin control before preview",lambda:s.plugin_preview(data))
             elif path=="/api/restore-preview": result=s.jobs.submit("Checking verified state for a restore preview",lambda:s.restore_preview(data))
             elif path=="/api/control-test-preview": result=s.jobs.submit("Preparing a 1 dB control test",lambda:s.control_test_preview(data))
             elif path=="/api/mix": result=s.jobs.submit("Observing peaks and preparing gain staging",lambda:s.mix(data))

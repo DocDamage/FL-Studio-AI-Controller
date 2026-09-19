@@ -1,7 +1,7 @@
 """Compensating-control previews, never a promise to roll back the whole project."""
 from __future__ import annotations
 import json
-from .contracts import Operation, Plan, PlanError, PrepareRequest, digest
+from .contracts import DisplayTarget, Operation, Plan, PlanError, PrepareRequest, digest
 from .controls import CONTROL_FIELD
 from .executor import stable_track
 
@@ -34,18 +34,23 @@ def prepare_restore(executor, plan_id: str):
             if "stereo_separation" not in after["track"]:
                 raise PlanError("This older run lacks v0.2 control snapshots; prepare a new inspected adjustment instead")
             final_tracks[op.track] = after["track"]
-            if op.kind == "parameter":
+            if op.kind in ("parameter", "parameter_display"):
                 final_parameters[(op.track, op.slot, op.parameter)] = after["parameter"]
         operations, anchors = [], []
         for op, before in reversed(tuple(zip(source.operations, source.before))):
-            value = (before["parameter"]["value"] if op.kind == "parameter"
-                     else before["track"].get(CONTROL_FIELD[op.kind]))
+            if op.kind == "parameter_display":
+                from .units import display_in_unit
+                value = DisplayTarget(amount=display_in_unit(before["parameter"].get("display"),op.value.unit),
+                    unit=op.value.unit,tolerance=op.value.tolerance)
+            else:
+                value = (before["parameter"]["value"] if op.kind == "parameter"
+                         else before["track"].get(CONTROL_FIELD[op.kind]))
             if value is None:
                 raise PlanError("Original control value was not captured; restore is unavailable")
             inverse = Operation(kind=op.kind, track=op.track, value=value, slot=op.slot,
                                 parameter=op.parameter, reason="Restore a captured value from verified run " + source.id)
             anchor = {"track": final_tracks[op.track]}
-            if op.kind == "parameter":
+            if op.kind in ("parameter", "parameter_display"):
                 anchor["parameter"] = final_parameters[(op.track, op.slot, op.parameter)]
             operations.append(inverse)
             anchors.append(anchor)

@@ -89,7 +89,7 @@ def test_mcp_initialize_and_tools(app):
     s,srv,path=app
     r=handle(path,{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}})
     assert r["result"]["serverInfo"]["name"]=="fl-studio-ai-copilot"
-    assert len(handle(path,{"jsonrpc":"2.0","id":2,"method":"tools/list"})["result"]["tools"])==12
+    assert len(handle(path,{"jsonrpc":"2.0","id":2,"method":"tools/list"})["result"]["tools"])==14
     assert handle(path,{"jsonrpc":"2.0","method":"notifications/initialized"}) is None
 
 def test_mcp_uses_same_app_executor(app):
@@ -150,3 +150,52 @@ def test_mcp_new_tools_reuse_service(app):
         ("copilot_control_test_preview",{"track":True}),("copilot_control_test_preview",{"track":0}),
         ("copilot_restore_preview",{"plan_id":"../../private"})]:
         with pytest.raises(ValueError):tool_call(path,name,args)
+
+
+@pytest.mark.parametrize('route,data',[('plugin-scan',{'track':6,'slot':0}),
+    ('plugin-preview',{'observation_id':'a'*32,'parameter':129,'value':.5})])
+def test_workbench_routes_require_auth(app,route,data):
+    _,srv,_=app
+    with pytest.raises(urllib.error.HTTPError) as e:call(srv,'/api/'+route,data,token=False)
+    assert e.value.code==403
+
+
+def test_workbench_http_scan_preview_apply_restore(app):
+    s,srv,_=app
+    def post(route,data):return poll(srv,json.load(call(srv,'/api/'+route,data)))
+    scan=post('plugin-scan',{'track':6,'slot':0})
+    p=post('plugin-preview',{'observation_id':scan['observation_id'],'parameter':129,'mode':'display',
+        'value':{'amount':-9.,'unit':'dB','tolerance':.1}})['plan']
+    assert not s.adapter.calls
+    with pytest.raises(RuntimeError,match='Inspect mode'):
+        post('execute',{'plan_id':p['id'],'digest':p['digest'],'confirm':True})
+    json.load(call(srv,'/api/settings',{'mode':'assist'}))
+    assert post('execute',{'plan_id':p['id'],'digest':p['digest'],'confirm':True})['status']=='verified'
+    assert s.adapter.display_parameter(6,0,129)['display']=='-9.000000 dB'
+    inverse=post('restore-preview',{'plan_id':p['id']})['plan']
+    assert post('execute',{'plan_id':inverse['id'],'digest':inverse['digest'],'confirm':True})['status']=='verified'
+    assert s.adapter.params[(6,0,129)]['value']==.5
+
+
+def test_workbench_mcp_uses_observations_and_never_self_approves(app):
+    s,srv,path=app
+    result=poll(srv,tool_call(path,'copilot_plugin_scan',{'track':6,'slot':0,'start':2048}))
+    p=poll(srv,tool_call(path,'copilot_plugin_preview',{'observation_id':result['observation_id'],
+        'parameter':2049,'mode':'display','value':{'amount':750.,'unit':'Hz','tolerance':1.}}))['plan']
+    assert p['operations'][0]['parameter']==2049 and not s.adapter.calls
+    for tool,args in [('copilot_plugin_scan',{'track':True,'slot':0}),
+        ('copilot_plugin_preview',{'observation_id':result['observation_id'],'parameter':2049,'value':.5,'confirm':True})]:
+        with pytest.raises(ValueError):tool_call(path,tool,args)
+
+
+def test_workbench_script_has_csp_and_no_secret(app):
+    _,srv,_=app
+    with call(srv,'/workbench.js',token=False) as response:
+        source=response.read().decode()
+        assert 'plugin-scan' in source and srv.token not in source
+        assert "script-src 'self'" in response.headers['Content-Security-Policy']
+
+
+def test_legacy_parameter_endpoint_rejects_bad_slot(app):
+    _,srv,_=app
+    with pytest.raises(urllib.error.HTTPError):call(srv,'/api/parameters?track=1&slot=10')

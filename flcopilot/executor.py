@@ -37,10 +37,11 @@ class Executor:
     def _guard(self,op):
         if op.track in self.locks.tracks: raise NotDispatched(f"Track {op.track} is locked")
         if op.track==0 and self.locks.master: raise NotDispatched("Master is locked")
-        if op.kind=="parameter" and self.locks.parameters: raise NotDispatched("Plugin parameters are locked")
+        if op.kind in ("parameter", "parameter_display") and self.locks.parameters: raise NotDispatched("Plugin parameters are locked")
     def _before(self,op):
         row={"track":stable_track(self.adapter.track(op.track))}
         if op.kind=="parameter": row["parameter"]=self.adapter.parameter(op.track,op.slot,op.parameter)
+        if op.kind=="parameter_display": row["parameter"]=self.adapter.display_parameter(op.track,op.slot,op.parameter)
         return row
     def prepare(self,request,*,expected_session=None,expected_before=None,purpose="adjustment",source_plan_id=None):
         with self.mutex:
@@ -50,7 +51,13 @@ class Executor:
             before=[]
             for op in request.operations:
                 self._guard(op)
+                if op.kind == "parameter_display":
+                    from .units import require_display_ready
+                    require_display_ready(self.adapter)
                 state=self._before(op)
+                if op.kind == "parameter_display":
+                    from .units import display_in_unit
+                    display_in_unit(state["parameter"].get("display"), op.value.unit)
                 if op.kind=="load_effect" and state["track"].get("plugins"):
                     raise NotDispatched("Experimental insertion requires a completely empty destination track.")
                 if op.kind=="volume":
@@ -69,9 +76,12 @@ class Executor:
             if expected_before is not None and digest(before) != digest(expected_before):
                 raise NotDispatched("Captured controls changed since the source observation; no restore/relative plan created")
             now=time.time()
+            warning = "No automatic project save or guaranteed rollback."
+            if any(op.kind == "parameter_display" for op in request.operations):
+                warning += " Display search moves through intermediate settings. Keep playback/recording stopped; a command in flight cannot be cancelled."
             plan=Plan(id=uuid.uuid4().hex,created=now,expires=now+300.,session=session,
                 backend=self.adapter.name,title=request.title,operations=request.operations,
-                before=tuple(before),locks=self.locks,purpose=purpose,source_plan_id=source_plan_id)
+                before=tuple(before),locks=self.locks,purpose=purpose,source_plan_id=source_plan_id,warning=warning)
             self.journal.add(plan)
             return public_plan(plan)
     def run(self,approval: Approval):
@@ -106,8 +116,11 @@ class Executor:
                     before=self._before(op)
                     if digest(before["track"]) != digest(expected[op.track]):
                         raise NotDispatched("Target was changed outside the executor")
-                    if op.kind=="parameter" and before["parameter"] != original["parameter"]:
+                    if op.kind in ("parameter", "parameter_display") and before["parameter"] != original["parameter"]:
                         raise NotDispatched("Plugin parameter identity/value changed")
+                    if op.kind == "parameter_display":
+                        from .units import require_display_ready
+                        require_display_ready(self.adapter)
                     self.journal.event(plan.id,"dispatch_intent",{"index":index,"operation":op.model_dump(),"before":before})
                     try:
                         receipt=self.adapter.execute(op,before,plan.session)
@@ -130,7 +143,7 @@ class Executor:
                         after=self._before(op)
                         self._verify_value(op,after)
                         verify_unchanged(op,before["track"],after["track"])
-                        if op.kind=="parameter" and any(after["parameter"][k]!=original["parameter"][k] for k in ("plugin","name")):
+                        if op.kind in ("parameter", "parameter_display") and any(after["parameter"][k]!=original["parameter"][k] for k in ("plugin","name")):
                             raise RuntimeError("Plugin/control identity changed after dispatch")
                     except Exception as exc:
                         raise RuntimeError("Post-dispatch verification unavailable: "+str(exc)) from exc
@@ -168,6 +181,11 @@ class Executor:
         if op.kind=="rename" and t["name"]!=op.value: raise RuntimeError("Track name readback mismatch")
         if op.kind=="parameter" and (not finite_control(after["parameter"].get("value")) or abs(after["parameter"]["value"]-op.value)>.002):
             raise RuntimeError("Parameter readback mismatch")
+        if op.kind=="parameter_display":
+            from .units import display_in_unit
+            value = display_in_unit(after["parameter"].get("display"), op.value.unit)
+            if abs(value-op.value.amount) > op.value.tolerance:
+                raise RuntimeError("Independent display-unit readback is outside the approved tolerance")
         if op.kind=="load_effect":
             plugins=t.get("plugins",[])
             if len(plugins)!=1 or plugins[0]["name"].casefold().replace(" ","")!=op.value.casefold().replace(" ",""):
