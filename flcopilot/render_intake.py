@@ -20,6 +20,7 @@ from .contracts import PlanError, Stopped
 MAX_WATCH_SECONDS = 600
 MAX_FOLDER_ENTRIES = 4096
 STABLE_SECONDS = 1.0
+WINDOWS_TIMESTAMPS = os.name == "nt"
 
 
 @dataclass(frozen=True)
@@ -28,12 +29,18 @@ class FileStamp:
     mtime_ns: int
     device: int = 0
     inode: int = 0
+    # Legacy field name: creation time on Windows; metadata-change time on POSIX.
     ctime_ns: int = 0
 
     @classmethod
     def read(cls, value):
+        # Windows stat/fstat can disagree on deprecated ctime semantics. Use
+        # explicit creation time on Python 3.12+, with the older creation-time
+        # ctime fallback for Python 3.11. Keep POSIX metadata-change detection.
+        timestamp = (getattr(value, "st_birthtime_ns", value.st_ctime_ns)
+                     if WINDOWS_TIMESTAMPS else value.st_ctime_ns)
         return cls(value.st_size, value.st_mtime_ns, value.st_dev,
-                   value.st_ino, value.st_ctime_ns)
+                   value.st_ino, timestamp)
 
     def matches(self, value):
         current = FileStamp.read(value)
