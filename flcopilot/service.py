@@ -9,6 +9,7 @@ from .executor import Executor
 from .jobs import Jobs
 from .journal import Journal
 from .planner import LocalPlanner
+from .saved_render import SavedRenderController
 
 class Service:
     def __init__(self,workspace,adapter,endpoint=None):
@@ -20,6 +21,7 @@ class Service:
         self.workbench=PluginWorkbench(self.executor)
         from .review_store import ReviewStore
         self.reviews=ReviewStore(self.assets.root/"reviews.sqlite3")
+        self.saved_renders=SavedRenderController(self.assets)
         self.jobs=Jobs(); self.audio_lock=threading.Lock()
         self.planner=LocalPlanner(endpoint)
         self.last_snapshot=None
@@ -29,7 +31,8 @@ class Service:
             "stopped":self.executor.stop_event.is_set(),"blocked":self.journal.blocked(),
             "running":self.executor.running,"planner":self.planner.status,
             "windows_menu_enabled":getattr(self.adapter,"windows_menu_enabled",False),
-            "workspace":str(self.assets.root),"hotkey":getattr(self,"hotkey_status","Not registered")}
+            "workspace":str(self.assets.root),"hotkey":getattr(self,"hotkey_status","Not registered"),
+            "saved_render_active":self.saved_renders.active()}
     def inspect(self):
         with self.executor.mutex:
             snapshot=self.adapter.snapshot()
@@ -43,6 +46,7 @@ class Service:
                 {"name":"Plugin workbench","status":"implemented","detail":"Bounded read-only parameter search with high-index pagination; observation-bound normalized or explicit dB/Hz/ms/percent previews. Display searches require stopped transport and separate approval."},
                 {"name":"Windows effect insertion","status":"experimental","detail":"Native Win32 Add menu only; isolated empty destination; manual fallback when not exposed."},
                 {"name":"Before / after audio review","status":"implemented","detail":"Imported paired exports, conservative timing checks, measured attenuation-only A/B, section deltas and saved human preferences. No live capture or causal-quality claim."},
+                {"name":"Saved-project FL rendering","status":"implemented","detail":"Explicit local-UI render of an already-saved FLP through pinned PostFader V10. A WAV is published only after complete decode, clean renderer exit and unchanged source bytes. Unsaved live edits are excluded."},
                 {"name":"Audio analysis + WAV finishing","status":"implemented","detail":"Local exported audio; gated LUFS, oversampled-peak estimate, real A/B files."},
                 {"name":"MIDI sketches","status":"implemented","detail":"Deterministic file export; manual FL import."},
                 {"name":"AI planning","status":"optional","detail":"Local llama.cpp-compatible endpoint or MCP relay; no bundled weights."},
@@ -111,6 +115,17 @@ class Service:
         if set(data)-{"bpm","key","bars","seed","swing"}: raise PlanError("Unknown MIDI setting")
         path,report=export_sketch(self.assets.exports,**data)
         return {"file":self.assets.add_output(path,kind="midi"),"report":report}
+    def render_start(self,data):
+        return self.saved_renders.start(data)
+    def render_get(self,data):
+        return self.saved_renders.get(data)
+    def render_list(self):
+        return self.saved_renders.list()
+    def render_cancel(self,data):
+        return self.saved_renders.cancel(data)
+    def stop(self):
+        result=self.executor.stop()
+        return {**result,"saved_render_cancellations":self.saved_renders.cancel_all()}
     def reconcile(self,data):
         with self.executor.mutex:
             return self._reconcile_locked(data)
@@ -180,4 +195,4 @@ class Service:
         request=ReviewID.model_validate_json(json.dumps(data))
         return self.reviews.get(request.review_id)
     def close(self):
-        self.executor.stop_event.set(); self.jobs.close(); self.reviews.close(); self.journal.close()
+        self.executor.stop_event.set(); self.saved_renders.close(); self.jobs.close(); self.reviews.close(); self.journal.close()

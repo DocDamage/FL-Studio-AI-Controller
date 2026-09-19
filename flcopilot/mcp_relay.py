@@ -13,6 +13,7 @@ from .planner import NoRedirect
 from .contracts import PrepareRequest,MasterRequest,Approval
 from .plugin_workbench import ScanRequest,ParameterPreview
 from .review_contracts import ReviewRequest,ReviewID
+from .saved_render import RenderJobID
 
 def schema(props=None,required=()):
     return {"type":"object","properties":props or {},"required":list(required),"additionalProperties":False}
@@ -33,7 +34,9 @@ TOOLS=[
     {"name":"copilot_review_audio","description":"After the user confirms matching export range/settings, analyze two imported bounces and create measured level-matched A/B when timing checks pass. Returns a job, never changes FL. Readiness is not artistic approval.","inputSchema":ReviewRequest.model_json_schema()},
     {"name":"copilot_reviews","description":"List the latest 50 persisted audio reviews. Human listening choices do not authorize DAW changes.","inputSchema":schema()},
     {"name":"copilot_review_get","description":"Read a historical audio review and its separately recorded human preference. This does not revalidate a live FL session or prove audio provenance.","inputSchema":ReviewID.model_json_schema()},
-    {"name":"copilot_stop","description":"Latch emergency stop; no later operation starts. In-flight writes are not undone.","inputSchema":schema()},
+    {"name":"copilot_renders","description":"List sanitized saved-project render jobs that were explicitly started in the desktop UI. No filesystem path or renderer command is exposed, and this tool cannot start a render.","inputSchema":schema()},
+    {"name":"copilot_render_get","description":"Read one sanitized saved-project render job. A published audio asset means PostFader reported a complete decoded WAV and clean renderer exit; unsaved live edits were never included.","inputSchema":RenderJobID.model_json_schema()},
+    {"name":"copilot_stop","description":"Latch emergency stop and request cancellation of active saved-project rendering; in-flight DAW writes are not undone.","inputSchema":schema()},
 ]
 
 def http_call(workspace,route,data=None):
@@ -54,7 +57,8 @@ def http_call(workspace,route,data=None):
 def tool_call(workspace,name,args):
     if not isinstance(args,dict): raise ValueError("Tool arguments must be an object")
     empty={"copilot_status":("/api/status",False),"copilot_inspect":("/api/inspect",True),
-        "copilot_assets":("/api/assets",False),"copilot_reviews":("/api/reviews",False),"copilot_stop":("/api/stop",True)}
+        "copilot_assets":("/api/assets",False),"copilot_reviews":("/api/reviews",False),
+        "copilot_renders":("/api/renders",False),"copilot_stop":("/api/stop",True)}
     if name in empty:
         if args: raise ValueError("This tool takes no arguments")
         route,post=empty[name]; return http_call(workspace,route,{} if post else None)
@@ -75,7 +79,7 @@ def tool_call(workspace,name,args):
         if set(args)!={"track"} or type(args["track"]) is not int or not 1<=args["track"]<=999:
             raise ValueError("A non-master insert (1–999) is required")
         return http_call(workspace,"/api/control-test-preview",args)
-    models={"copilot_review_audio":(ReviewRequest,"/api/review-audio"),"copilot_review_get":(ReviewID,"/api/review-get"),"copilot_plugin_scan":(ScanRequest,"/api/plugin-scan"),"copilot_plugin_preview":(ParameterPreview,"/api/plugin-preview"),"copilot_prepare":(PrepareRequest,"/api/prepare"),"copilot_execute":(Approval,"/api/execute"),"copilot_master":(MasterRequest,"/api/master")}
+    models={"copilot_review_audio":(ReviewRequest,"/api/review-audio"),"copilot_review_get":(ReviewID,"/api/review-get"),"copilot_render_get":(RenderJobID,"/api/render-get"),"copilot_plugin_scan":(ScanRequest,"/api/plugin-scan"),"copilot_plugin_preview":(ParameterPreview,"/api/plugin-preview"),"copilot_prepare":(PrepareRequest,"/api/prepare"),"copilot_execute":(Approval,"/api/execute"),"copilot_master":(MasterRequest,"/api/master")}
     if name not in models: raise ValueError("Unknown tool")
     model,route=models[name]; parsed=model.model_validate_json(json.dumps(args))
     return http_call(workspace,route,parsed.model_dump(mode="json"))
@@ -87,7 +91,7 @@ def handle(workspace,msg):
     try:
         if method=="initialize":
             result={"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":False}},
-                "serverInfo":{"name":"fl-studio-ai-copilot","version":"0.4.0"},
+                "serverInfo":{"name":"fl-studio-ai-copilot","version":"0.5.0"},
                 "instructions":"Use one running desktop app. Read-only by default. Never equate demo/technical readback with audible quality. Approval must come from the user."}
         elif method=="ping": result={}
         elif method=="tools/list": result={"tools":TOOLS}

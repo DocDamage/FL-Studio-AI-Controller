@@ -50,7 +50,7 @@ def main():
                                    capture_output=True, text=True, timeout=20)
             assert relay.returncode == 0
             replies = [json.loads(line) for line in relay.stdout.splitlines()]
-            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == 17
+            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == 19
             assert json.loads(replies[2]["result"]["content"][0]["text"])["demo"]
             scan_job = json.loads(replies[3]["result"]["content"][0]["text"])
             for _ in range(100):
@@ -95,7 +95,7 @@ def main():
             assert decision["revision"] == 2 and not http_call(workspace, "/api/history")
             summary = {"app_version": status["version"], "app_process": "passed_simulator",
                        "diagnostics_process": "passed; simulator correctly returned not-ready exit 2",
-                       "mcp_stdio": "passed; 17 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
+                       "mcp_stdio": "passed; 19 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
                        "plugin_scan_via_mcp_process": "passed; observed high index 2049, no control plans created",
                        "audio_review_process": "passed; real WAV imports, 3 outputs and persisted decision; zero DAW plans",
                        "live_fl_tested": False, "windows_process_tested": os.name == "nt"}

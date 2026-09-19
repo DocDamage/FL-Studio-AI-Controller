@@ -1,7 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id), esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const frag=location.hash.slice(1); if(frag){sessionStorage.setItem("flcopilot-token",frag);history.replaceState(null,"",location.pathname);} const token=sessionStorage.getItem("flcopilot-token")||"";
-let status=null,snapshot=null,plan=null,editTrack=null,assets=[],activeJobs=0;
+let status=null,snapshot=null,plan=null,editTrack=null,assets=[],activeJobs=0,activeRender=null,renderTimer=null;
 const number=(x,d=1)=>Number.isFinite(x)?x.toFixed(d):"—";
 function notice(message,ok=false){$("notice").textContent=message;$("notice").className=ok?"ok":"";$("notice").hidden=false;}
 async function api(path,data){const opts={headers:{Authorization:"Bearer "+token}};if(data!==undefined){opts.method="POST";opts.headers["Content-Type"]="application/json";opts.body=JSON.stringify(data);} const r=await fetch("/api/"+path,opts);const out=await r.json();if(!r.ok)throw Error(out.error||r.statusText);return out;}
@@ -60,6 +60,45 @@ action("read-params",async()=>{$("param-values").textContent=JSON.stringify(awai
 action("apply",async()=>{const p=plan;const insert=p.operations.some(o=>o.kind==="load_effect");if(insert)notice("Focus FL Studio now. Dispatch starts after a 5-second handoff; leave the main FL window untouched.",true);const r=await job("execute",{plan_id:p.id,digest:p.digest,confirm:true,focus_handoff:insert});plan=null;$("plan-state").textContent=r.status.toUpperCase();$("run-result").hidden=false;$("run-result").innerHTML=`<div class="result-title"><h2>${r.demo?"Simulator":"Execution"} result</h2><span class="pill">${esc(r.status)}</span></div><p>${esc(r.error||"Changes passed independent readback. Artistic quality was not evaluated.")}</p><details><summary>Receipts and evidence</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;await refreshStatus();if(r.status==="verified")await inspect();else notice(r.error||"Execution stopped. Review the receipt.");});
 action("mix",async()=>{const tracks=[...document.querySelectorAll(".use-track:checked")].map(e=>+e.dataset.track);if(!tracks.length)throw Error("Select at least one unlocked non-master track.");const result=await job("mix",{tracks,seconds:+$("observe-seconds").value});if(result.plan)showPlan(result.plan);else notice(result.message,true);});
 action("stop",async()=>{await api("stop",{});await refreshStatus();});action("reset-stop",async()=>{await api("reset-stop",{});await refreshStatus();notice("Stop reset. Reinspect before preparing new changes.",true);});
+function renderSavedJob(row){
+    const bits=[String(row.status||"unknown").toUpperCase()];
+    if(row.audio&&row.audio.duration_seconds)bits.push(number(row.audio.duration_seconds,1)+" s");
+    if(row.audio&&row.audio.sample_rate)bits.push(row.audio.sample_rate+" Hz");
+    if(row.audio&&row.audio.channels)bits.push(row.audio.channels+" ch");
+    if(row.cancel_requested)bits.push("cancel requested");
+    $("render-status").textContent=bits.join(" · ")+(row.error?" · "+row.error:"");
+    $("render-result").hidden=false;
+    $("render-result").textContent=JSON.stringify(row,null,2);
+    $("render-cancel").disabled=!activeRender||["completed","failed","cancelled","timed_out"].includes(row.status);
+}
+async function pollSavedRender(){
+    if(!activeRender)return;
+    try{
+        const row=await api("render-get",{job_id:activeRender});renderSavedJob(row);
+        if(["completed","failed","cancelled","timed_out"].includes(row.status)){
+            activeRender=null;$("render-cancel").disabled=true;
+            if(row.asset){await refreshAssets();$("audio-asset").value=row.asset.id;notice("Saved-project render verified and added to Audio lab.",true);}
+            else if(row.error)notice(row.error);
+            await refreshStatus();return;
+        }
+        renderTimer=setTimeout(pollSavedRender,1000);
+    }catch(e){activeRender=null;$("render-cancel").disabled=true;notice(e.message);}
+}
+action("render-start",async()=>{
+    const project=$("render-project").value.trim(),fl=$("render-fl").value.trim();
+    if(!project)throw Error("Enter the absolute path to a saved .flp.");
+    if(!$("render-confirm").checked)throw Error("Confirm that the project version on disk is the version you want rendered.");
+    const request={project_path:project,timeout_seconds:Number($("render-timeout").value),confirm_saved_state_only:true};
+    if(fl)request.fl_studio_path=fl;
+    const row=await api("render-start",request);activeRender=row.job_id;renderSavedJob(row);
+    if(renderTimer)clearTimeout(renderTimer);renderTimer=setTimeout(pollSavedRender,500);await refreshStatus();
+});
+action("render-cancel",async()=>{
+    if(!activeRender)throw Error("No saved-project render is active.");
+    const row=await api("render-cancel",{job_id:activeRender});renderSavedJob(row);
+    if(renderTimer)clearTimeout(renderTimer);renderTimer=setTimeout(pollSavedRender,300);
+});
+
 async function refreshAssets(){assets=await api("assets");const audio=assets.filter(a=>a.kind==="input"||a.kind==="audio");for(const id of ["audio-asset","reference-asset"]){const old=$(id).value;$(id).innerHTML=`<option value="">${id==="audio-asset"?"Choose working bounce":"Choose reference / candidate"}</option>`+audio.map(a=>`<option value="${a.id}">${esc(a.name)} · ${esc(a.kind)}</option>`).join("");if(audio.some(a=>a.id===old))$(id).value=old;}}
 async function upload(files){for(const f of files){if(f.size>300*1024*1024)throw Error("Upload exceeds 300 MiB.");notice("Importing "+f.name+" locally…",true);const r=await fetch("/api/import",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/octet-stream","X-Filename":encodeURIComponent(f.name)},body:f});const a=await r.json();if(!r.ok)throw Error(a.error);await refreshAssets();$("audio-asset").value=a.id;notice("Imported "+a.name+". The original file was not changed.",true);}}
 $("audio-files").onchange=()=>upload($("audio-files").files).catch(e=>notice(e.message));$("dropzone").ondragover=e=>{e.preventDefault();$("dropzone").classList.add("drag");};$("dropzone").ondragleave=()=>$("dropzone").classList.remove("drag");$("dropzone").ondrop=e=>{e.preventDefault();$("dropzone").classList.remove("drag");upload(e.dataTransfer.files).catch(e=>notice(e.message));};

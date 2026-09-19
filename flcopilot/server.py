@@ -20,7 +20,7 @@ class LocalServer(ThreadingHTTPServer):
         self.origin=f"http://127.0.0.1:{self.port}"
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="FLCopilot/0.4"
+    server_version="FLCopilot/0.5"
     protocol_version="HTTP/1.0"
     def setup(self):
         super().setup(); self.connection.settimeout(30)
@@ -77,6 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=="/api/capabilities": return self._json(s.capabilities())
             if path=="/api/history": return self._json(s.journal.history())
             if path=="/api/reviews": return self._json(s.reviews.history())
+            if path=="/api/renders": return self._json(s.render_list())
             if path=="/api/assets": return self._json(s.assets.list())
             if path=="/api/parameters": return self._json(s.parameters(int(q["track"][0]),int(q["slot"][0])))
             if path.startswith("/api/jobs/"): return self._json(s.jobs.get(path.rsplit("/",1)[-1]))
@@ -125,12 +126,17 @@ class Handler(BaseHTTPRequestHandler):
             elif path=="/api/review-audio": result=s.jobs.submit("Checking exports and rendering level-matched A/B",lambda:s.review_audio(data))
             elif path=="/api/review-get": result=s.review_get(data)
             elif path=="/api/review-decision": result=s.review_decision(data)
+            elif path=="/api/render-start": result=s.render_start(data)
+            elif path=="/api/render-get": result=s.render_get(data)
+            elif path=="/api/render-cancel": result=s.render_cancel(data)
             elif path=="/api/midi": result=s.create_midi(data)
-            elif path=="/api/stop": result=s.executor.stop()
+            elif path=="/api/stop": result=s.stop()
             elif path=="/api/reset-stop":
                 with s.jobs.lock:
                     if any(r["status"] in ("running","queued") for r in s.jobs.rows.values()):
                         raise PlanError("Wait until all in-flight work settles before resetting stop")
+                if s.saved_renders.active():
+                    raise PlanError("Wait until the saved-project renderer settles before resetting stop")
                 s.executor.reset_stop(); result=s.status()
             elif path=="/api/reconcile": result=s.reconcile(data)
             elif path=="/api/diagnostics":
