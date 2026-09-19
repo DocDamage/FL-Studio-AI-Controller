@@ -31,7 +31,7 @@ def main():
                     raise RuntimeError("App process exited before writing its descriptor")
                 time.sleep(.1)
             status = http_call(workspace, "/api/status")
-            assert status["demo"] and status["version"] == "0.4.0"
+            assert status["demo"] and status["version"] == "0.5.0"
             doctor = subprocess.run([sys.executable, "-m", "flcopilot", "--diagnose", "--workspace", tmp],
                                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=40)
             assert doctor.returncode == 2, "Simulator must never pass live qualification"
