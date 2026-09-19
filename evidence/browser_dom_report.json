@@ -1,0 +1,33 @@
+{
+  "checks": [
+    "Simulator banner",
+    "Inspect-mode approval blocked",
+    "Prompt preview",
+    "Assist-mode approval",
+    "Actual simulator state readback",
+    "Real MIDI creation",
+    "Real audio upload through browser file object",
+    "Real loudness analysis",
+    "Real master + four exports",
+    "History rendering",
+    "Eleven capability labels",
+    "Stop/reset",
+    "390px page overflow check",
+    "Explicit mute preview and application",
+    "Stereo-separation preview and application",
+    "Verified journal restore preview",
+    "Separately approved restore readback",
+    "Fourteen diagnostic checks",
+    "Simulator cannot qualify host",
+    "Privacy-filtered report export UI",
+    "1 dB control-test preview",
+    "Approved 1 dB reduction",
+    "Separately approved test restore"
+  ],
+  "page_errors": [],
+  "environment": "Linux Chromium 1512px and 390px; in-memory DOM harness calling real Service methods",
+  "network_transport": "Fetch replaced by test harness. HTTP endpoints separately tested in pytest.",
+  "browser_navigation_limit": "Ordinary localhost navigation was blocked by environment administrator policy; no policy was modified.",
+  "live_fl_tested": false,
+  "audio_fixture": "Synthetic generated sine mixture, not user audio"
+}

@@ -1,0 +1,10 @@
+WARNING: The directory '/home/oai/.cache/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled. Check the permissions and owner of that directory. If executing pip with sudo, you should use sudo's -H flag.
+Processing /mnt/data/FL_Studio_AI_Copilot_v0_2_0
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: fl-studio-ai-copilot
+  Building wheel for fl-studio-ai-copilot (pyproject.toml): started
+  Building wheel for fl-studio-ai-copilot (pyproject.toml): finished with status 'done'
+  Created wheel for fl-studio-ai-copilot: filename=fl_studio_ai_copilot-0.2.0-py3-none-any.whl size=79364 sha256=d3b3b0a6b1248ad3b2cc14ce981da27f225b9b8d8c3be6ec866bba042866d245
+  Stored in directory: /tmp/pip-ephem-wheel-cache-xzswk12u/wheels/44/aa/09/4c3adcf8cab49eb730343771783045ae5e80d8d3402ca70c58
+Successfully built fl-studio-ai-copilot

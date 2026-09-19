@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+local-settings.json
+*.sqlite*
+*.db*
+*.log
+server.json
+instance.lock
+*.gguf
+# User material must remain outside the source tree.
+workspace/
+imports/
+exports/
+*.flp
+
+# Generated browser screenshots remain release artifacts, not application source.
+evidence/*.png

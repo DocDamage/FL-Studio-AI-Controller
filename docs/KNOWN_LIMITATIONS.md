@@ -1,0 +1,53 @@
+# Known limitations — v0.2.0
+
+This release implements a useful guarded foundation, not the entire proposed DAW
+agent. The distinction is intentional and visible in the capability ledger.
+
+- No actual Windows or FL Studio run was possible in the build environment.
+  The pinned external PostFader package was not installed/exercised in this build; source-reviewed
+  API contract doubles are not equivalent to running its complete test suite.
+- The native Windows Add-menu adapter is experimental. FL custom-drawn menus may
+  expose nothing usable, in which case automatic loading remains unavailable.
+  There is no coordinate/OCR/vision fallback that pretends this limitation is fixed.
+- The exposed controls are fader dB, pan, rename, mute/unmute, stereo separation, loaded
+  effect normalized parameters, and isolated experimental effect insertion. Routing,
+  solo, plugin removal/
+  reorder, generator insertion, note editing, Playlist editing and arrangement
+  manipulation are not exposed by this app, even where upstream has broader tools.
+- "Finish" is a task-scoped approved pass, not autonomous repeated audition/revision.
+  Peak gain staging is not full mixing. Master export is gain/normalization with
+  optional dynamics limiting, not adaptive tonal EQ, compressor optimization,
+  restoration, or an artistic-quality score. No Ozone-superiority claim is made.
+- No live audio capture, automatic FL render, VST3 sensor/control plugin, stem
+  separation model, sample chopping engine, or automatic stem export is included.
+  Import actual renders manually. MIDI sketches are MIDI files, not finished beats.
+- No guaranteed Undo or automatic rollback/save. A saved-FLP backup excludes
+  unsaved edits and external samples. Keep your own versioned projects.
+- Master is protectable rather than physically immutable: the user can explicitly
+  unlock it in the UI. Musical content locks are not unlockable in v0.2.
+- Readbacks are non-atomic snapshots. Indistinguishable plugin instances cannot
+  be distinguished by name/index alone. Other clients or manual edits can race;
+  validation reduces risk but cannot freeze the entire FL process.
+- Optional local model binaries/weights are not bundled, inferred from your GPU,
+  downloaded automatically, or benchmarked. External local endpoints must use
+  the alias `local`. Model context and output bounds may be too small for huge
+  projects; reject rather than pretend the omitted context was analyzed.
+- No Windows signed EXE, self-updater, uninstall wizard, or fully hash-locked
+  transitive dependency archive is provided. PowerShell launch/setup source is
+  included and statically reviewed, not executed on Windows.
+- Browser DOM flows were exercised with a direct-service test harness because
+  ordinary localhost navigation was blocked by the environment's admin policy.
+  HTTP/authentication was tested independently. Actual end-to-end browser startup
+  and Windows media playback/download integration remain host acceptance items.
+
+- Recovery previews are compensating writes for captured controls, not project
+  rollback, Undo, plugin-preset restoration or automatic error recovery. They need
+  a fully verified source run, the same session and matching captured state.
+  v0.1 receipts without the expanded snapshots are not eligible. Data not captured
+  by these controls (automation curves, hidden plugin state, audio, routing and
+  arrangements) is neither restored nor certified unchanged.
+- Diagnostics do not install drivers, configure FL MIDI ports, elevate permissions,
+  or fix arbitrary device/host failures. A compatible handshake and fader round trip
+  do not establish audio capture, plugin insertion, latency or artistic quality.
+  The control-evidence lookup covers the most recent 50 journal plans for the current
+  bridge session; historical evidence beyond that bound is not promoted implicitly.

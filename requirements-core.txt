@@ -1,0 +1,8 @@
+# Direct versions exercised in the Linux/Python 3.13 development environment.
+# Transitive dependencies are resolved by pip; this is NOT a complete hash lock.
+numpy==2.3.5
+scipy==1.17.0
+soundfile==0.13.1
+pydantic==2.13.4
+pyloudnorm==0.2.0
+imageio-ffmpeg==0.6.0

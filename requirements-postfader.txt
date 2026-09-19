@@ -1,0 +1,4 @@
+# Exact upstream source revision, not a floating default branch.
+postfader-fl-studio-mcp @ https://github.com/synopsys0/postfader-fl-studio-mcp/archive/480bedd1cde98fe272c5e02f66efd7aa83315d0b.zip
+pywinauto>=0.6.8,<0.7; sys_platform == "win32"
+psutil==7.2.2

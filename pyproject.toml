@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fl-studio-ai-copilot"
+version = "0.2.0"
+description = "Local Windows-first FL Studio companion: guarded PostFader control and measured audio finishing"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+dependencies = [
+  "numpy>=2.3,<3", "scipy>=1.17,<2", "soundfile>=0.13,<1",
+  "pydantic>=2.13,<3", "pyloudnorm>=0.2,<1", "imageio-ffmpeg>=0.6,<1"
+]
+
+[project.scripts]
+flcopilot = "flcopilot.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["flcopilot*"]
+
+[tool.setuptools.package-data]
+flcopilot = ["web/*.html", "web/*.css", "web/*.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

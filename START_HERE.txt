@@ -1,0 +1,50 @@
+FL STUDIO AI COPILOT 0.2.0 — CUMULATIVE WINDOWS-FIRST DEVELOPMENT SOURCE
+
+WHAT CHANGED
+- Explicit mute/unmute and stereo-separation control, through the normal preview.
+- Connection screen with 14 read-only checks and privacy-filtered report export.
+- A 1 dB test preview and separately approved return-to-original control plan.
+- Run journal: Preview restore for complete verified control runs with unchanged state.
+- Failed post-dispatch reads, non-finite values, wrong-session receipts and unexpected
+  captured-control changes stop further writes instead of being treated as safe retries.
+- MCP relay now has 12 tools. The doctor reuses the running app, not a second bridge.
+
+NEW INSTALL
+1. Extract the whole ZIP into a normal folder, not inside the compressed ZIP view.
+2. Install 64-bit Python 3.13 with the py launcher, then run SETUP_WINDOWS.cmd.
+   First-time dependency installation needs internet access.
+3. Run START_DEMO.cmd. Mixer/control data is simulated. Audio exports and MIDI are real.
+
+UPGRADING FROM 0.1
+Close the old app. Extract into a NEW folder; copy only local-settings.json, not
+.venv or server.json. Run setup in the new folder. The existing default workspace
+keeps imports, exports and journal history. See docs/UPGRADE_v0.2.0.md.
+
+CONNECT AND TEST FL
+- Install the live adapter during setup. No MIDI driver is bundled or installed.
+- Configure your trusted bidirectional virtual MIDI endpoint. With FL and other
+  PostFader clients closed, use CONNECT_FL.cmd for the guided bridge deployment.
+- In FL MIDI settings, enable the input, select Universal Bridge, and use matching
+  input/output port numbers. Reload the script and check its ready message.
+- Run START_LIVE.cmd. Use Connection & setup > Check connection, then Inspect session.
+- On a SAVED PROJECT COPY, choose a non-master insert > Preview 1 dB test.
+- Approve in Assist. Check FL and the receipt. Then Run journal > Preview restore.
+  Restoring is another preview requiring another approval, not automatic Undo.
+- CHECK_CONNECTION.cmd is optional and requires the app to remain RUNNING.
+
+UNCHANGED COMPATIBILITY
+The pinned upstream gate requires FL Studio 2026, 26.1.3.5336+ and MIDI API 44+.
+No claim is made about your installed FL version. Disconnected mode still supports
+the audio lab and MIDI exports. The upstream PostFader revision remains unchanged.
+
+LIMITATIONS
+Windows installation, actual FL control, virtual MIDI, native menu insertion and
+local-model performance were NOT validated in this Linux build environment.
+This is source, not a signed EXE, VST3, driver, model download or complete mix engineer.
+Windows effect insertion remains experimental. Automatic Playlist editing, live
+capture, plugin removal/reordering, autosave and guaranteed project rollback remain
+unimplemented. Recovery restores only supported captured controls with matching state.
+Older v0.1 receipts remain viewable but do not qualify for the new restore workflow.
+
+Keep the console open. Stop prevents later writes but cannot undo in-flight changes.
+Read README.md, BUILD_REPORT.md and docs/WINDOWS_ACCEPTANCE.md before live use.

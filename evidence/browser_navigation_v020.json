@@ -1,0 +1,6 @@
+{
+  "backend": "demo",
+  "live_fl_tested": false,
+  "result": "browser_http_launch_not_verified",
+  "error": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at <LOOPBACK_ORIGIN>/#<TOKEN>\nCall log:\n  - navigating to \"<LOOPBACK_ORIGIN>/#<TOKEN>\", waiting until \"networkidle\"\n"
+}
