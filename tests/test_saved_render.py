@@ -128,13 +128,19 @@ def test_render_start_hides_paths_and_forces_private_output_root(tmp_path):
     source = make_flp(tmp_path / "Very Private Beat.flp").resolve()
     started = render.start({"project_path": str(source), "confirm_saved_state_only": True, "timeout_seconds": 90.0})
     assert started["status"] == "queued" and not started["published"]
-    assert started["source_sha256"] and not started["includes_unsaved_changes"]
+    assert started["source_integrity_verified"] is False and not started["includes_unsaved_changes"]
     payload = json.dumps(started)
     assert str(source) not in payload and "FL64.exe" not in payload and "private-project" not in payload
     assert manager.last_request["project_path"] == str(source)
     assert manager.last_request["output_directory"] == str(render.root)
     assert manager.last_request["timeout_seconds"] == 90.0
     assert manager.last_request["fl_studio_path"] is None
+    manager.jobs[started["job_id"]]["status"] = "failed"
+    manager.jobs[started["job_id"]]["error"] = f"Could not render {source}"
+    manager.jobs[started["job_id"]]["warnings"] = [f"Project {source.name} was not rendered"]
+    sanitized = render.get({"job_id": started["job_id"]})
+    assert "<local-path>" in json.dumps(sanitized)
+    assert str(source) not in json.dumps(sanitized) and source.name not in json.dumps(sanitized)
     render.close()
     assert manager.closed
 
@@ -148,6 +154,7 @@ def test_completed_render_is_registered_once_with_generic_public_path(tmp_path):
     assert completed["status"] == "completed" and completed["published"]
     assert completed["asset"]["kind"] == "audio"
     assert completed["audio"]["fully_decoded"] is True
+    assert completed["source_integrity_verified"] is True
     again = render.get({"job_id": started["job_id"]})
     assert again["asset"] == completed["asset"]
     outputs = [row for row in assets.list() if row["kind"] == "audio"]

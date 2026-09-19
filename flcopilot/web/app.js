@@ -60,6 +60,7 @@ action("read-params",async()=>{$("param-values").textContent=JSON.stringify(awai
 action("apply",async()=>{const p=plan;const insert=p.operations.some(o=>o.kind==="load_effect");if(insert)notice("Focus FL Studio now. Dispatch starts after a 5-second handoff; leave the main FL window untouched.",true);const r=await job("execute",{plan_id:p.id,digest:p.digest,confirm:true,focus_handoff:insert});plan=null;$("plan-state").textContent=r.status.toUpperCase();$("run-result").hidden=false;$("run-result").innerHTML=`<div class="result-title"><h2>${r.demo?"Simulator":"Execution"} result</h2><span class="pill">${esc(r.status)}</span></div><p>${esc(r.error||"Changes passed independent readback. Artistic quality was not evaluated.")}</p><details><summary>Receipts and evidence</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;await refreshStatus();if(r.status==="verified")await inspect();else notice(r.error||"Execution stopped. Review the receipt.");});
 action("mix",async()=>{const tracks=[...document.querySelectorAll(".use-track:checked")].map(e=>+e.dataset.track);if(!tracks.length)throw Error("Select at least one unlocked non-master track.");const result=await job("mix",{tracks,seconds:+$("observe-seconds").value});if(result.plan)showPlan(result.plan);else notice(result.message,true);});
 action("stop",async()=>{await api("stop",{});await refreshStatus();});action("reset-stop",async()=>{await api("reset-stop",{});await refreshStatus();notice("Stop reset. Reinspect before preparing new changes.",true);});
+const renderTerminal=row=>["completed","failed","cancelled","timed_out"].includes(row.status);
 function renderSavedJob(row){
     const bits=[String(row.status||"unknown").toUpperCase()];
     if(row.audio&&row.audio.duration_seconds)bits.push(number(row.audio.duration_seconds,1)+" s");
@@ -69,13 +70,13 @@ function renderSavedJob(row){
     $("render-status").textContent=bits.join(" · ")+(row.error?" · "+row.error:"");
     $("render-result").hidden=false;
     $("render-result").textContent=JSON.stringify(row,null,2);
-    $("render-cancel").disabled=!activeRender||["completed","failed","cancelled","timed_out"].includes(row.status);
+    $("render-cancel").disabled=!activeRender||renderTerminal(row);
 }
 async function pollSavedRender(){
     if(!activeRender)return;
     try{
         const row=await api("render-get",{job_id:activeRender});renderSavedJob(row);
-        if(["completed","failed","cancelled","timed_out"].includes(row.status)){
+        if(renderTerminal(row)){
             activeRender=null;$("render-cancel").disabled=true;
             if(row.asset){await refreshAssets();$("audio-asset").value=row.asset.id;notice("Saved-project render verified and added to Audio lab.",true);}
             else if(row.error)notice(row.error);
@@ -98,6 +99,17 @@ action("render-cancel",async()=>{
     const row=await api("render-cancel",{job_id:activeRender});renderSavedJob(row);
     if(renderTimer)clearTimeout(renderTimer);renderTimer=setTimeout(pollSavedRender,300);
 });
+
+async function resumeSavedRender(){
+    const rows=await api("renders");
+    if(!rows.length)return;
+    const latest=[...rows].sort((a,b)=>String(a.created_at||"").localeCompare(String(b.created_at||""))).at(-1);
+    renderSavedJob(latest);
+    if(!renderTerminal(latest)){
+        activeRender=latest.job_id;$("render-cancel").disabled=false;
+        if(renderTimer)clearTimeout(renderTimer);renderTimer=setTimeout(pollSavedRender,500);
+    }
+}
 
 async function refreshAssets(){assets=await api("assets");const audio=assets.filter(a=>a.kind==="input"||a.kind==="audio");for(const id of ["audio-asset","reference-asset"]){const old=$(id).value;$(id).innerHTML=`<option value="">${id==="audio-asset"?"Choose working bounce":"Choose reference / candidate"}</option>`+audio.map(a=>`<option value="${a.id}">${esc(a.name)} · ${esc(a.kind)}</option>`).join("");if(audio.some(a=>a.id===old))$(id).value=old;}}
 async function upload(files){for(const f of files){if(f.size>300*1024*1024)throw Error("Upload exceeds 300 MiB.");notice("Importing "+f.name+" locally…",true);const r=await fetch("/api/import",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/octet-stream","X-Filename":encodeURIComponent(f.name)},body:f});const a=await r.json();if(!r.ok)throw Error(a.error);await refreshAssets();$("audio-asset").value=a.id;notice("Imported "+a.name+". The original file was not changed.",true);}}
@@ -126,7 +138,7 @@ async function loadHistory(){
 }
 action("refresh-history",loadHistory);action("reconcile",async()=>{const s=await inspect();if(!window.confirm("Check the current state in FL yourself. Acknowledge it and clear the uncertainty block? This will NOT undo earlier changes."))return;await api("reconcile",{digest:s.reconcile_digest,acknowledge:true});await loadHistory();notice("Acknowledged the observed state. No rollback was performed.",true);});
 action("probe-menu",async()=>{notice("Focus the main FL window now. Native menu observation begins after a 5-second handoff.",true);const r=await job("menu-probe",{});$("menu-result").textContent=JSON.stringify(r,null,2);$("menu-result").hidden=false;});
-async function boot(){await refreshStatus();await refreshAssets();const c=await api("capabilities");$("capabilities").innerHTML=c.features.map(f=>`<div class="capability"><strong>${esc(f.name)}</strong><span class="badge ${["experimental","unsupported","manual handoff"].includes(f.status)?"warn":""}">${esc(f.status)}</span><p>${esc(f.detail)}</p></div>`).join("");if(status.demo)await inspect();}boot().catch(e=>notice(e.message));setInterval(updateApproval,1000);
+async function boot(){await refreshStatus();await resumeSavedRender();await refreshAssets();const c=await api("capabilities");$("capabilities").innerHTML=c.features.map(f=>`<div class="capability"><strong>${esc(f.name)}</strong><span class="badge ${["experimental","unsupported","manual handoff"].includes(f.status)?"warn":""}">${esc(f.status)}</span><p>${esc(f.detail)}</p></div>`).join("");if(status.demo)await inspect();}boot().catch(e=>notice(e.message));setInterval(updateApproval,1000);
 
 function showDiagnostics(report){
     $("diagnostic-summary").textContent=report.summary+" · Control proof: "+report.control_evidence.status;

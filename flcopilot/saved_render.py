@@ -132,14 +132,33 @@ class SavedRenderController:
             "application_exit_observed": raw.get("application_exit_observed", False),
             "process_return_code": raw.get("process_return_code"),
             "renderer_may_be_running": raw.get("renderer_may_be_running", False),
-            "error": raw.get("error"),
-            "warnings": list(raw.get("warnings") or []),
+            "error": self._safe_message(raw, raw.get("error")),
+            "warnings": [self._safe_message(raw, value) for value in (raw.get("warnings") or [])],
             "includes_unsaved_changes": False,
-            "source_sha256": source[1] if source else None,
+            "source_integrity_verified": asset is not None,
             "audio": audio,
             "asset": safe_asset,
             "published": safe_asset is not None,
         }
+
+    def _safe_message(self, raw, value):
+        if value is None:
+            return None
+        text = str(value)
+        terms = []
+        source = self._sources.get(raw.get("job_id"))
+        if source:
+            terms.extend((str(source[0]), source[0].name))
+        for key in ("project_path", "output_directory", "output_path", "fl_studio_path"):
+            term = raw.get(key)
+            if isinstance(term, str):
+                terms.append(term)
+        command = raw.get("command")
+        if isinstance(command, (list, tuple)):
+            terms.extend(term for term in command if isinstance(term, str))
+        for term in sorted({term for term in terms if term}, key=len, reverse=True):
+            text = text.replace(term, "<local-path>")
+        return text[:2000]
 
     def _publish_if_complete(self, job):
         raw = self._raw(job)
