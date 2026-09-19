@@ -96,7 +96,13 @@ arm, manually export a new mix, analyze it, capture a second bounce, review the
 pair, then test overwrite refusal, split-stem ambiguity, Cancel, Stop, and restart.
 No live-host acceptance claim is made by simulator tests or Windows CI.
 
-Next development: qualify native Windows/FL exports first, then investigate an
-explicit controller-triggered render mechanism with verifiable session, range and
-output evidence. Do not substitute blind key presses or assume an upstream render
-command is safe without qualification.
+Native qualification now has a strict record/validator in
+[RENDER_ACCEPTANCE.md](RENDER_ACCEPTANCE.md). It binds at least two separately armed,
+verified captures to the observed Windows/FL session without exposing local paths or
+claiming causal provenance. Simulator tests and Windows CI still do not satisfy this
+gate.
+
+Next development after a passing native record: investigate an explicit
+controller-triggered render mechanism with verifiable session, range and output
+evidence. Do not substitute blind key presses or assume an upstream render command
+is safe without qualification.

@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "status": "not_run",
+  "date": null,
+  "windows_build": null,
+  "fl_studio_build": null,
+  "python_version": null,
+  "postfader_version": null,
+  "app_mode": null,
+  "saved_project_copy_confirmed": null,
+  "project_label": null,
+  "export_folder": null,
+  "interface_and_driver": null,
+  "private_notes": [],
+  "tests": {
+    "arm_watch_new_filename": "not_run",
+    "capture_first_export": "not_run",
+    "analyze_first_capture": "not_run",
+    "capture_second_export": "not_run",
+    "same_range_review_ready": "not_run",
+    "overwrite_refusal": "not_run",
+    "multiple_new_files_refusal": "not_run",
+    "cancel_watch": "not_run",
+    "global_stop_watch": "not_run",
+    "restart_requires_rearm": "not_run",
+    "stored_copy_hash_recheck": "not_run"
+  },
+  "captures": [],
+  "notes": [],
+  "evidence_sha256": {}
+}
