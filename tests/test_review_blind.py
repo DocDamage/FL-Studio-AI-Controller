@@ -216,9 +216,9 @@ def test_precommitted_session_is_balanced_and_sealed(app, trials):
     assert session["status"] == "open" and session["answers_sealed"] is True
     assert session["planned_trials"] == trials and session["answered_trials"] == 0
     assert session["current_trial"]["ordinal"] == 1
-    raw = json.dumps(session)
     for secret in ("mapping", "x_matches", "correct", "a_side", "x_sample", "summary", "trials"):
-        assert secret not in raw
+        assert secret not in session
+    assert set(session["current_trial"]) == {"trial_id", "ordinal", "status", "answer_revealed"}
     rows = app.reviews.db.execute(
         "SELECT a_side,x_sample FROM review_blind_trials WHERE session_id=? ORDER BY ordinal",
         (session["session_id"],)).fetchall()
