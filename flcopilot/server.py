@@ -65,11 +65,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             path=urlsplit(self.path).path
-            if path in ("/","/app.js","/workbench.js","/review.js","/render.js","/style.css"):
+            if path in ("/","/app.js","/workbench.js","/review.js","/render.js","/bounces.js","/style.css"):
                 self._secure(auth=False)
-                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/render.js":"render.js","/style.css":"style.css"}[path]
+                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/render.js":"render.js","/bounces.js":"bounces.js","/style.css":"style.css"}[path]
                 data=files("flcopilot").joinpath("web",name).read_bytes()
-                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","render.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
+                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","render.js":"text/javascript; charset=utf-8","bounces.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
                 self._headers(200,kind,len(data)); self.wfile.write(data); return
             self._secure()
             s=self.server.service; q=parse_qs(urlsplit(self.path).query)
@@ -102,6 +102,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(s.assets.import_stream(self.rfile,n,name))
             data=self._body()
             if path=="/api/inspect": result=s.jobs.submit("Inspecting FL session",s.inspect)
+            elif path=="/api/bounces": result=s.bounces.list(data)
+            elif path=="/api/bounce-get": result=s.bounces.get(data)
+            elif path=="/api/bounce-edit": result=s.bounces.edit(data)
+            elif path=="/api/bounce-verify": result=s.jobs.submit("Verifying stored bounce bytes",lambda:s.bounces.verify(data))
             elif path=="/api/render-watch": result=s.render_watch(data)
             elif path=="/api/render-watch-cancel": result=s.render_watch_cancel(data)
             elif path=="/api/settings": result=s.settings(data)

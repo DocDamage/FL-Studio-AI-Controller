@@ -37,7 +37,8 @@ def main():
         def request(req):
             path=req['path'].removeprefix('/api/');data=req.get('data',{})
             try:
-                if path=='status':out=service.status()
+                if path=='bounces':out=service.bounces.list(data)
+                elif path=='status':out=service.status()
                 elif path=='render-watch':out=service.render_watch_status()
                 elif path=='assets':out=service.assets.list()
                 elif path=='capabilities':out=service.capabilities()
@@ -67,7 +68,7 @@ def main():
                     transport='direct_service_dom_fallback';navigation='blocked_by_environment_administrator'
                     html=(ROOT/'flcopilot/web/index.html').read_text()
                     html=html.replace('<link rel="stylesheet" href="/style.css">','')
-                    for name in ['app','workbench','review','render']:
+                    for name in ['app','workbench','review','render','bounces']:
                         html=html.replace(f'<script src="/{name}.js" defer></script>','')
                     # A new blank page avoids a forbidden error-page origin.
                     page.close();page=browser.new_page(viewport={'width':1512,'height':1100})
@@ -82,7 +83,7 @@ def main():
                                 blob:async()=>new Blob([Uint8Array.from(atob(r.binary),c=>c.charCodeAt(0))],{type:'audio/wav'})};
                         };
                     }''')
-                    for name in ['app','workbench','review','render']:
+                    for name in ['app','workbench','review','render','bounces']:
                         page.add_script_tag(content=(ROOT/f'flcopilot/web/{name}.js').read_text())
                 page.wait_for_function('status && snapshot')
                 page.locator('[data-tab="review"]').click()

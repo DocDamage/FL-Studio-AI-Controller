@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import threading
+import time
 import uuid
 from pathlib import Path
 from .contracts import PlanError, Stopped
@@ -32,7 +33,7 @@ class AssetStore:
         self.data=json.loads(self.manifest.read_text()) if self.manifest.exists() else {}
     def import_stream(self,stream,length,name,*,validate=None,stop=None,metadata=None):
         # Internal validation hooks run before registration, never after publication.
-        if metadata and set(metadata) & {"id","name","path","sha256","kind"}:
+        if metadata and set(metadata) & {"id","name","path","sha256","kind","imported_at","bytes","annotation"}:
             raise PlanError("Input metadata cannot replace asset identity")
         def check_stop():
             if stop is not None and stop.is_set(): raise Stopped("Audio import cancelled")
@@ -52,7 +53,7 @@ class AssetStore:
             if validate is not None: validate(path)
             check_stop()
             record={**(metadata or {}),"id":asset,"name":Path(name.replace("\\","/")).name[:180],
-                "path":str(path.relative_to(self.root)),"sha256":file_hash(path),"kind":"input"}
+                "path":str(path.relative_to(self.root)),"sha256":file_hash(path),"kind":"input","imported_at":time.time(),"bytes":length}
             with self.lock:
                 check_stop()
                 updated={**self.data,asset:record}

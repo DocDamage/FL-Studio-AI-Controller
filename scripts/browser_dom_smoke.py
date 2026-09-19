@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix='flcopilot-dom-') as root:
         browser=p.chromium.launch(executable_path=__import__('os').environ.get('FLCOPILOT_BROWSER') or __import__('shutil').which('chromium'),headless=True,args=['--no-sandbox'])
         page=browser.new_page(viewport={'width':1512,'height':1100},device_scale_factor=1)
         errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-        html=(P/'flcopilot/web/index.html').read_text().replace('<link rel="stylesheet" href="/style.css">','').replace('<script src="/app.js" defer></script>','').replace('<script src="/workbench.js" defer></script>','').replace('<script src="/review.js" defer></script>','').replace('<script src="/render.js" defer></script>','')
+        html=(P/'flcopilot/web/index.html').read_text().replace('<link rel="stylesheet" href="/style.css">','').replace('<script src="/app.js" defer></script>','').replace('<script src="/workbench.js" defer></script>','').replace('<script src="/review.js" defer></script>','').replace('<script src="/render.js" defer></script>','').replace('<script src="/bounces.js" defer></script>','')
         page.set_content(html)
         page.add_style_tag(content=(P/'flcopilot/web/style.css').read_text())
         page.expose_function('__nativeRequest',request)

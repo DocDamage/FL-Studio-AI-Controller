@@ -93,3 +93,5 @@ action("review-save-choice",async()=>{
 $("stop").addEventListener("click",()=>{$("review-player").pause();reviewSwitch++;});
 document.querySelector('[data-tab="review"]').addEventListener("click",()=>reviewRefresh().catch(e=>notice(e.message)));
 window.addEventListener("beforeunload",reviewDispose);
+
+for(const id of ["review-a","review-b"]){$(id).addEventListener("change",()=>{$("review-same-range").checked=false;});}

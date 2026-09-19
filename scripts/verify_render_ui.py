@@ -35,7 +35,8 @@ def main():
         def request(req):
             path = req['path'].removeprefix('/api/'); data = req.get('data')
             try:
-                if path == 'status': out = service.status()
+                if path == 'bounces': out = service.bounces.list(data)
+                elif path == 'status': out = service.status()
                 elif path == 'assets': out = service.assets.list()
                 elif path == 'capabilities': out = service.capabilities()
                 elif path == 'history': out = service.journal.history()
@@ -67,7 +68,7 @@ def main():
                     transport = 'direct_service_dom_fallback'; navigation = 'blocked_by_environment_administrator'
                     html = (ROOT / 'flcopilot/web/index.html').read_text()
                     html = html.replace('<link rel="stylesheet" href="/style.css">', '')
-                    modules = ['app', 'workbench', 'review', 'render']
+                    modules = ['app', 'workbench', 'review', 'render', 'bounces']
                     for name in modules:
                         html = html.replace(f'<script src="/{name}.js" defer></script>', '')
                     page.close(); page = browser.new_page(viewport={'width': 1512, 'height': 1100})

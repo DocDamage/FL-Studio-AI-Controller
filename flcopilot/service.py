@@ -23,6 +23,8 @@ class Service:
         self.jobs=Jobs(); self.audio_lock=threading.Lock()
         from .render_workflow import RenderWorkflow
         self.render_workflow=RenderWorkflow(self.assets,self.jobs,self.executor.stop_event)
+        from .bounce_library import BounceLibrary
+        self.bounces=BounceLibrary(self.assets,self.executor.stop_event)
         self.planner=LocalPlanner(endpoint)
         self.last_snapshot=None
     def status(self):
