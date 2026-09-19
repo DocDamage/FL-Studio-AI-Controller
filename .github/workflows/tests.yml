@@ -23,6 +23,8 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pip install --no-deps -e .
+      - name: Preflight real codec export intake
+        run: python -m pytest -q tests/test_render_codec_roundtrip.py
       - run: python -m pytest -q tests
       - run: python scripts/verify_runtime.py
 # These are core/fixture tests, not live FL Studio acceptance or signed installer builds.
