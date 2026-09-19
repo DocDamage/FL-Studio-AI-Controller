@@ -30,11 +30,12 @@ side, or repeat a numeric range or measured time window. A/B uses the original
 level-matched files with separate stereo lanes and a shared scale. Loops are
 approximate browser playback, not edits to your audio or FL project.
 
-**Ready reviews also have a [server-randomized blind A/B/X check](docs/BLIND_ABX_REVIEW.md).**
-The browser sees only blinded Reference A/B/X audio until you submit which reference
-X matches (or choose unsure). The reveal is stored as a separate human
-discrimination attempt; it does not change your saved preference, score quality, or
-authorize a DAW action.
+**Ready reviews also have [blind A/B/X listening](docs/BLIND_ABX_REVIEW.md).**
+Use one quick blind trial or precommit a balanced 4–20-trial session. While an
+answer is outstanding, labeled measurements, waveforms, ordinary A/B playback and
+preference controls are hidden. Multi-trial answers stay sealed until the planned
+session is complete; results remain human discrimination evidence, not a quality
+score or DAW authorization.
 
 The merged [manual export intake](docs/FL_RENDER_INTAKE.md),
 [persistent bounce library](docs/BOUNCE_LIBRARY.md), and
@@ -101,9 +102,10 @@ For a ready pair, it creates `A_Baseline_Matched.wav`, `B_Candidate_Matched.wav`
 and checked within **0.1 LU** of their common measured loudness and under a -1 dB
 oversampled-peak estimate. No EQ or limiter is inserted. The standard player switches A/B at approximately the same position and is not
 gapless or sample-synchronous. The separate blind A/B/X check hides the baseline /
-candidate mapping until the human answers; one trial is a discrimination attempt,
-not statistical proof, a preference, or a quality score. Global and 10–60 second
-window deltas are measurements, not improvements or scores.
+candidate mapping until the human answers. A sealed multi-trial mode precommits
+balanced assignments and withholds correctness until the planned final trial.
+Neither mode is a preference, quality score, or formal statistical verdict. Global
+and 10–60 second window deltas are measurements, not improvements or scores.
 
 Reviews persist in a separate local SQLite store. Your preference and notes are
 revision-checked human decisions; neither they nor the optional association with a

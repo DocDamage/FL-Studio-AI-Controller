@@ -50,6 +50,9 @@ def main():
                 elif path=='review-blind-history':out=service.review_blind_history(data)
                 elif path=='review-blind-start':out=service.jobs.submit('Start blind trial',lambda:service.review_blind_start(data))
                 elif path=='review-blind-submit':out=service.jobs.submit('Submit blind trial',lambda:service.review_blind_submit(data))
+                elif path=='review-blind-session-history':out=service.review_blind_session_history(data)
+                elif path=='review-blind-session-start':out=service.jobs.submit('Start blind session',lambda:service.review_blind_session_start(data))
+                elif path=='review-blind-session-submit':out=service.jobs.submit('Submit blind session answer',lambda:service.review_blind_session_submit(data))
                 elif path=='inspect':out=service.jobs.submit('Inspect simulator',service.inspect)
                 elif path=='review-audio':out=service.jobs.submit('Analyze pair',lambda:service.review_audio(data))
                 elif path.startswith('jobs/'):out=service.jobs.get(path[5:])
@@ -115,8 +118,12 @@ def main():
                 page.locator('#review-blind-start').click()
                 page.wait_for_function('reviewBlind && reviewBlind.status==="open"')
                 assert page.evaluate('"mapping" in reviewBlind') is False
+                assert page.locator('#review-result').evaluate('(e)=>e.classList.contains("blind-focus")')
+                assert page.locator('#waveform-panel').is_hidden()
+                assert page.locator('#review-choice').is_hidden()
+                assert page.locator('#review-files').is_hidden()
                 assert 'answer still hidden' in page.locator('#review-blind-history').inner_text()
-                checks.append('Blind mapping stays server-side before answer')
+                checks.extend(['Blind mapping stays server-side before answer','Active blind mode hides labeled review evidence'])
                 page.locator('#review-blind-play-x').click()
                 page.wait_for_function('document.querySelector("#review-blind-player").readyState>=1 && !document.querySelector("#review-blind-player").paused')
                 assert page.locator('#review-blind-now').inner_text()=='X · hidden identity'
@@ -125,9 +132,28 @@ def main():
                 page.wait_for_function('reviewBlind && reviewBlind.status==="completed"')
                 assert page.locator('#review-blind-result').is_visible()
                 assert 'Reference A was' in page.locator('#review-blind-result').inner_text()
+                assert not page.locator('#review-result').evaluate('(e)=>e.classList.contains("blind-focus")')
+                assert page.locator('#review-choice').is_visible()
+                checks.extend(['Blind answer reveals only after submission','Labeled review evidence returns after reveal'])
+                page.locator('#review-blind-session-count').select_option('4')
+                page.locator('#review-blind-session-start').click()
+                page.wait_for_function('reviewBlindSession && reviewBlindSession.status==="open"')
+                assert page.locator('#review-result').evaluate('(e)=>e.classList.contains("blind-focus")')
+                assert 'trial 1 of 4' in page.locator('#review-blind-state').inner_text()
+                checks.append('Precommitted session enters distraction-free sealed mode')
+                for trial in range(4):
+                    page.locator('#review-blind-unsure').click()
+                    if trial<3:
+                        page.wait_for_function('reviewBlindSession && reviewBlindSession.status==="open" && reviewBlindSession.answered_trials==='+str(trial+1))
+                        assert page.locator('#review-blind-session-result').is_hidden()
+                    else:
+                        page.wait_for_function('reviewBlindSession && reviewBlindSession.status==="completed"')
+                assert page.locator('#review-blind-session-result').is_visible()
+                assert '4 unsure' in page.locator('#review-blind-session-result').inner_text()
+                assert not page.locator('#review-result').evaluate('(e)=>e.classList.contains("blind-focus")')
                 assert page.locator('#review-choice').input_value()=='undecided'
                 assert not service.adapter.calls
-                checks.extend(['Blind answer reveals only after submission','Blind trial does not choose a preference or write the DAW'])
+                checks.extend(['Session answers stay sealed until the planned final trial','Completed blind session does not choose a preference or write the DAW'])
                 page.locator('#review-choice').select_option('prefer_baseline');page.locator('#review-note').fill('Keep the original drum punch.')
                 page.locator('#review-save-choice').click();page.wait_for_function('reviewCurrent.revision===2')
                 page.locator('.review-open').first.click();page.wait_for_function('reviewCurrent.revision===2')
