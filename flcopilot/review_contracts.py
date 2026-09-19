@@ -37,3 +37,11 @@ class ReviewDecision(Strict):
 
 class ReviewID(Strict):
     review_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
+class BlindTrialID(Strict):
+    trial_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
+class BlindTrialSubmit(BlindTrialID):
+    guess: Literal["a", "b", "unsure"]

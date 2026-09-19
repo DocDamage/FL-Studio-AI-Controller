@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased v0.5 — blind A/B/X listening
+
+Added persistent server-randomized blind A/B/X discrimination trials to technically
+ready Audio reviews. Open trials expose only blinded A/B/X audio routes; the
+baseline/candidate mapping and X answer are revealed only after the human submits a
+guess or explicitly chooses unsure. The matched review outputs are hash-checked
+before trial creation, playback and answer submission.
+
+Blind history is separate from the saved review preference and never authorizes FL
+changes. There is no new MCP tool, DAW authority, dependency, automatic render,
+artistic score or statistical-significance claim. Package metadata remains 0.4.0
+while v0.5 native qualification is pending. See
+[Blind A/B/X listening](docs/BLIND_ABX_REVIEW.md).
+
 ## Unreleased v0.5 — waveform navigation and section looping
 
 Added verified, read-only per-channel waveforms for existing level-matched Audio

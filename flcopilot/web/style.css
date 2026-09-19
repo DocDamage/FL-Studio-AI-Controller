@@ -39,3 +39,8 @@
 #bounce-library .technical-note, #bounce-library strong, #bounce-name {overflow-wrap:anywhere;}
 #bounce-library .two-cols > div {min-width:0;}
 #bounce-note {display:block;width:100%;min-height:110px;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;resize:vertical;box-sizing:border-box;}
+
+.review-blind{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.review-blind audio{width:100%;max-width:720px}
+.review-blind h4{margin:18px 0 8px}
+.review-blind .review-history-row{margin-top:8px}
