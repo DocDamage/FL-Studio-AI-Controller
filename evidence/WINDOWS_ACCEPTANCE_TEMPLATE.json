@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "status": "not_run",
   "date": null,
   "windows_build": null,
@@ -27,8 +28,12 @@
     "approved_1db_roundtrip": "not_run",
     "mute_stereo_controls": "not_run",
     "stale_restore_refusal": "not_run",
-    "privacy_filtered_export": "not_run"
+    "privacy_filtered_export": "not_run",
+    "plugin_workbench_scan": "not_run",
+    "plugin_display_unit_change_restore": "not_run",
+    "audio_review_level_match": "not_run",
+    "audio_review_decision_persistence": "not_run"
   },
   "notes": [],
-  "application_version": "0.2.0"
+  "evidence_sha256": {}
 }
