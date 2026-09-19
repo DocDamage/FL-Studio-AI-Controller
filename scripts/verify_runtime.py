@@ -31,7 +31,7 @@ def main():
                     raise RuntimeError("App process exited before writing its descriptor")
                 time.sleep(.1)
             status = http_call(workspace, "/api/status")
-            assert status["demo"] and status["version"] == "0.3.0"
+            assert status["demo"] and status["version"] == "0.4.0"
             doctor = subprocess.run([sys.executable, "-m", "flcopilot", "--diagnose", "--workspace", tmp],
                                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=40)
             assert doctor.returncode == 2, "Simulator must never pass live qualification"
@@ -50,7 +50,7 @@ def main():
                                    capture_output=True, text=True, timeout=20)
             assert relay.returncode == 0
             replies = [json.loads(line) for line in relay.stdout.splitlines()]
-            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == 14
+            assert len(replies) == 4 and len(replies[1]["result"]["tools"]) == 17
             assert json.loads(replies[2]["result"]["content"][0]["text"])["demo"]
             scan_job = json.loads(replies[3]["result"]["content"][0]["text"])
             for _ in range(100):
@@ -60,10 +60,44 @@ def main():
                 time.sleep(.05)
             assert scan["status"] == "complete" and scan["result"]["parameters"][0]["index"] == 2049
             assert not http_call(workspace, "/api/history")
+            # Import two synthetic exports through the real authenticated HTTP app.
+            import io
+            import urllib.request
+            import numpy as np
+            import soundfile as sf
+            from flcopilot.planner import NoRedirect
+            info = json.loads((workspace/"server.json").read_text())
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+            fixture = np.random.default_rng(91).normal(size=(24000, 2))*.04
+            inputs = []
+            for samples in (fixture, fixture*.5):
+                stream = io.BytesIO()
+                sf.write(stream, samples, 8000, format="WAV", subtype="FLOAT")
+                request = urllib.request.Request(info["origin"]+"/api/import", data=stream.getvalue(),
+                    headers={"Authorization":"Bearer "+info["token"], "Content-Type":"application/octet-stream",
+                             "X-Filename":"Synthetic_Bounce.wav"})
+                with opener.open(request, timeout=10) as response:
+                    inputs.append(json.load(response)["id"])
+            review_job = http_call(workspace, "/api/review-audio", {
+                "baseline":inputs[0], "candidate":inputs[1], "confirm_same_range":True})
+            for _ in range(400):
+                result = http_call(workspace, "/api/jobs/"+review_job["job"])
+                if result["status"] == "complete": break
+                if result["status"] == "error": raise RuntimeError(result["error"])
+                time.sleep(.05)
+            assert result["status"] == "complete"
+            review = result["result"]
+            assert review["report"]["status"] == "ready" and len(review["files"]) == 3
+            assert review["decision"] == "undecided"
+            decision = http_call(workspace, "/api/review-decision", {
+                "review_id":review["review_id"], "expected_revision":1,
+                "decision":"needs_revision", "note":"Synthetic process test; not an artistic judgment"})
+            assert decision["revision"] == 2 and not http_call(workspace, "/api/history")
             summary = {"app_version": status["version"], "app_process": "passed_simulator",
                        "diagnostics_process": "passed; simulator correctly returned not-ready exit 2",
-                       "mcp_stdio": "passed; 14 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
+                       "mcp_stdio": "passed; 17 tools; JSON-RPC-only stdout", "diagnostics_control_plans_created": 0,
                        "plugin_scan_via_mcp_process": "passed; observed high index 2049, no control plans created",
+                       "audio_review_process": "passed; real WAV imports, 3 outputs and persisted decision; zero DAW plans",
                        "live_fl_tested": False, "windows_process_tested": os.name == "nt"}
             print(json.dumps(summary, indent=2))
         finally:

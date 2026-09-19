@@ -4,7 +4,7 @@ import hashlib
 import json
 import time
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True, allow_inf_nan=False)
@@ -104,6 +104,13 @@ class Approval(Strict):
     plan_id: str
     digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     confirm: Literal[True]
+
+    @field_validator("confirm", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("Approval requires explicit boolean true")
+        return value
 
 class MasterRequest(Strict):
     asset: str = Field(pattern=r"^[a-f0-9]{32}$")

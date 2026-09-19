@@ -25,3 +25,12 @@
 .parameter-table td{white-space:normal;overflow-wrap:anywhere}.parameter-table td:first-child{min-width:155px}
 .parameter-table th{white-space:nowrap}#wb-coverage{min-height:64px}#wb-rows .empty{white-space:normal}
 @media(max-width:1100px){.workbench-layout{grid-template-columns:minmax(0,1fr)}.workbench-control{max-width:680px}}
+
+/* v0.4 audio review. No measurements are styled as an artistic winner. */
+.review-history-row{display:flex;gap:16px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:14px 0}
+.review-history-row strong{overflow-wrap:anywhere}.review-history-row small{display:block}
+#review-history{max-height:510px;overflow:auto}.review-audition,.review-decision{border-top:1px solid var(--line);margin-top:24px;padding-top:20px}
+.review-audition audio{width:100%;max-width:700px}.review-audition button.selected{background:var(--green);color:var(--bg)}
+#review-note{width:100%;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;resize:vertical}
+#review-revision{align-self:center}#review-result summary{cursor:pointer}
+@media(max-width:680px){.review-history-row{align-items:flex-start;flex-direction:column}#review-result .pill{white-space:normal}}

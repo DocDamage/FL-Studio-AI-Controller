@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fl-studio-ai-copilot"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local Windows-first FL Studio companion: guarded PostFader control and measured audio finishing"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"

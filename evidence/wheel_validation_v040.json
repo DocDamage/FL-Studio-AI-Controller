@@ -1,0 +1,8 @@
+{
+  "wheel": "fl_studio_ai_copilot-0.4.0-py3-none-any.whl",
+  "size_bytes": 105252,
+  "sha256": "af0a258a2a182d64e8dd2e186db34236cec6b62d31c19e432c7a7ce0bb62e78a",
+  "crc": "passed",
+  "isolated_import": "isolated imports passed",
+  "live_fl_tested": false
+}

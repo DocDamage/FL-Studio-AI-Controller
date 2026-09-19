@@ -1,0 +1,29 @@
+{
+  "app_version": "0.4.0",
+  "checks": [
+    "Same-export declaration required",
+    "Actual WAV pair rendered",
+    "Measured match within tolerance",
+    "Three verified output files",
+    "Original sources preserved",
+    "Global before/after deltas",
+    "Elapsed-time window deltas",
+    "No automatic listening preference",
+    "No DAW writes",
+    "Explicit human decision persists",
+    "Saved review reopens with note",
+    "Authenticated WAV audition loading",
+    "A/B side switching preserves approximate position",
+    "Pause control",
+    "Stale decision revision refused",
+    "390 px layout stays within viewport"
+  ],
+  "page_errors": [],
+  "transport": "direct_service_dom_fallback",
+  "ordinary_navigation": "blocked_by_environment_administrator",
+  "browser_policy_changed": false,
+  "fixture": "Synthetic noise with varying envelope; no user audio",
+  "live_fl_tested": false,
+  "physical_audio_listening_performed": false,
+  "platform": "linux"
+}

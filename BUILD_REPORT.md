@@ -1,117 +1,88 @@
-# FL Studio AI Copilot v0.3.0 — build and validation report
+# FL Studio AI Copilot v0.4.0 — build report
 
-Date: September 19, 2026. Cumulative development source release.
+September 19, 2026. Cumulative source milestone: imported before/after audio review.
 
-## Delivered milestone
+## Baseline and scope
 
-Plugin Workbench adds bounded, read-only exploration of effects that are already
-loaded in mixer slots, followed by separately approved normalized or engineering-unit
-parameter adjustments. It does not load an instrument, create a Playlist clip, listen
-to FL output, save the project, or supply an adaptive mastering model.
+Started from the supplied v0.3.0 source ZIP, whose reconstructed Git tree matched
+remote main exactly: `b6d8a105c3cdcba4ca1a99ab66c1d67aa9d6260b`, commit
+`d323ff0508eaa9a8f9d2a52dfd1bf5a5e3fb5084`. Re-ran 311 baseline tests successfully.
+The prior Windows/Linux CI run was confirmed successful. Those are baseline checks,
+not evidence that this new revision or a running FL instance was already tested.
 
-The initial local source was reconstructed from the v0.2.0 archive and the repository
-import additions. Its Git tree matched remote `main` exactly:
-`bcf0f713d9aeaeba7da99b747e5c88d779f999c2`, at commit
-`c9c1c982845641463491bf2aac05942e7561c953`. The baseline suite was independently
-rerun: 214 passed. This release builds on that verified baseline, not a replacement
-scaffold. The v0.2.0 build report is preserved under `docs/history/`.
+New code adds strict review requests, conservative timing evidence, an actual
+attenuation-only A/B renderer with reread measurements, persistent review/decision
+storage, UI audition controls, HTTP routes and three MCP tools (17 total). Optional
+verified-run associations deliberately do not claim export provenance or causation.
+Existing control ownership, protection locks, bridge pins, master rendering and MIDI
+workflows are preserved. No direct capture, render trigger or DAW mutation was added.
 
-## Added functionality
+Also fixed numeric 1 satisfying a boolean confirmation and error-response sockets
+left open by the HTTP test helper. Confirmation now requires actual boolean true.
+Batch output registration changes the asset manifest only after the group validates.
+Normal failed-publication cleanup removes only newly created review output records.
 
-- Parameter discovery reads pages of at most 128 raw indices, within an explicit
-  window of at most 2,048 indices. The address ceiling is 65,536. Counts, coverage,
-  excluded padding, search scope, and the next window are reported separately.
-  An empty search result never establishes that the whole plugin was searched.
-- Search matches observed names and displayed text. Preview selection is bound to
-  an in-memory observation token, the session, captured mixer state, plugin name,
-  raw parameter index, and its prior readback. Tokens expire after five minutes;
-  only the latest 16 scans are retained. A token is not approval.
-- Targets support normalized values or explicit dB, Hz, ms, and percent. Observed
-  kHz and seconds are converted to base units. Ambiguous/unitless displays, ratios,
-  labels, unsupported locales, and non-finite values are rejected rather than guessed.
-- Engineering-unit search uses the pinned PostFader display setter and its live
-  display-unit capability. It requires playback and recording to be explicitly
-  stopped and is isolated to one operation per approved plan. The solver can move
-  through intermediate settings. The emergency stop cannot interrupt a native call
-  already in progress.
-- Verification independently rereads the displayed result and compares it with
-  the approved target and tolerance. A contradictory or missing result after dispatch
-  is an unknown outcome, not a safe retry or a claim that nothing happened.
-- Restore prepares a new, separately approved display-unit operation from the
-  captured value. It is not automatic rollback or a guarantee of FL Undo.
-- Existing parameter, track, and master locks still apply. Discovery creates no
-  control plan. Two typed MCP tools use the existing authenticated companion and
-  serialized executor, bringing the exposed relay to 14 tools.
-- The simulator includes one clearly fictional high-index test effect. No stock
-  plugin mapping, real plugin behavior, or live-host success is implied.
+## Local checks actually executed
 
-## Evidence from this build
+| Check | Result | Evidence boundary |
+|---|---|---|
+| Baseline tests | 311 passed | Existing source on Linux Python 3.13 |
+| Full revised suite | **363 passed**, warnings treated as errors | 52 additional cases; synthetic audio, real HTTP, contract doubles |
+| Existing browser regression | **35 checks**, no page errors | Direct-Service DOM harness, current app code |
+| New review UI | **16 checks**, no page errors | Real service/render/storage; DOM transport fallback |
+| Companion/MCP/audio process | Passed | Real separate simulator app, authenticated HTTP imports, actual WAV outputs, 17-tool stdio relay |
+| JavaScript / Python syntax | Passed | Local syntax/compile checks |
+| Native FL control/capture | Not run | No FL Studio instance or MIDI endpoint in this environment |
 
-| Check | Observed result | Boundary |
-| --- | --- | --- |
-| Baseline source identity | Exact match with remote v0.2.0 Git tree | Source identity, not host execution |
-| Baseline core suite | 214 passed on Linux Python 3.13 | Simulator, contract, HTTP and audio tests |
-| Expanded core suite | **311 passed in 17.38 seconds** | 97 additional tests; no running FL Studio |
-| Real companion subprocess | Passed in simulator mode | Authenticated localhost HTTP, not MIDI |
-| Diagnostic subprocess | Passed; simulator correctly returns not-ready exit 2 | No live-readiness claim |
-| MCP stdio subprocess | Passed, 14 tools; high index 2049 scanned without creating plans | Relay-to-companion integration in simulation |
-| Browser DOM workflows | **35 checks, no page errors** | In-memory harness with real Service methods |
-| Wheel | Built; isolated import and new static/package members verified | Linux, dependencies already installed |
-| Prior GitHub CI | v0.2.0 core tests passed on Ubuntu and Windows | Does not qualify native FL or this revision |
-| New GitHub CI | Workflow includes both OS core suites and simulator-process checks | Consult the actual run for the published commit |
+The full suite includes gain-only matching, shifted/uncertain/flat/antiphase content,
+format mismatches, silence and silent windows, short-tail coverage, peak-constrained
+attenuation, remeasured output rejection, source hashes and concurrent mutations,
+cancellation, disk/publication failures, decision revisions and concurrent choices,
+persistence across restart, untrusted paths and malformed confirmations, associated
+run boundaries, authenticated routes and MCP forwarding. Audio review was tested
+with every DAW adapter entry point replaced by a failure, establishing that the
+review path does not need or call those adapter methods in that test.
 
-The 311-test suite includes parameter-page bounds, high indices, duplicate/missing
-rows, stale sessions and observations, unit conversion, type/range validation,
-transport and capability checks, locks, exact target identity, contradictory receipts,
-independent display verification, failed-readback quarantine, display restores,
-HTTP authentication and endpoints, MCP schemas and forwarding, and the existing
-real offline audio and MIDI tests. No audio processing algorithm or dependency pin
-was changed for this milestone.
+The first stricter warnings-as-errors run exposed unclosed HTTP error responses in
+the test helper. After closing those responses explicitly, all 363 tests passed under
+that stricter run. No warnings were suppressed to obtain the result.
 
-### Browser evidence limitation
+## Browser scope
 
-Ordinary localhost navigation in the supplied browser was blocked by the environment
-with `ERR_BLOCKED_BY_ADMINISTRATOR`. No browser policy was changed. The existing
-in-memory DOM harness served static assets in memory and forwarded its fetch calls
-to real Service methods. HTTP authentication, routing, and process integration were
-checked separately. This is not a successful ordinary browser-launch or Windows
-installation test.
+Ordinary localhost navigation was attempted and rejected with
+`ERR_BLOCKED_BY_ADMINISTRATOR`. No policy was modified. The new UI script permits
+fallback only for that explicit environment condition. Static UI and real Service
+calls then ran in a blank-page DOM harness; actual HTTP/authentication was checked
+separately. UI playback tests verify browser media state and approximate switching,
+not physical listening quality, Windows sound drivers or gapless playback.
 
-The DOM run exercises the existing workflow plus partial scans, high-index windows,
-end-of-range navigation, numeric display conversion, display preview/approval/restore,
-a normalized alternate preview, escaped plugin text, and 390-pixel layout. The
-screenshot `Plugin_Workbench_v030.png` depicts the simulator only and is distributed
-separately from Git source.
+Reviewed desktop and 390px screenshots. They show a synthetic before/after pair and
+a simulator banner; no user audio, secrets, real project names or live FL evidence
+is represented. Generated PNG files remain download artifacts, excluded from Git.
 
-## Evidence files
+## Packaging and CI
 
-- `evidence/pytest_v030.txt`
-- `evidence/browser_dom_report_v030.json`
-- `evidence/browser_navigation_v030.json`
-- `evidence/runtime_process_v030.json`
-- `evidence/wheel_validation_v030.json`
+Wheel build and isolated import checks, exact ZIP integrity/hash checks, and a
+fresh-extraction test rerun are recorded in the separate package receipt produced
+after this report. Source files are indexed by the regenerated `MANIFEST.sha256`.
+GitHub CI runs the core suite and the enhanced real simulator-process checks on
+Windows and Linux; inspect the actual published-commit run, not this document, for
+its result. No new dependency or workflow permission was introduced.
 
-The source `MANIFEST.sha256` covers tracked payload files except itself. Downloadable
-package integrity and a fresh-extraction rerun are recorded in the separate package
-receipt. Generated screenshots, local settings, authorization tokens, workspaces,
-private logs, audio, databases, virtual environments, model weights, and FL projects
-are not staged for GitHub.
+Evidence: `evidence/pytest_v040.txt`, `evidence/runtime_process_v040.json`,
+`evidence/browser_dom_report_v040.json`, `evidence/review_ui_v040.json`.
+The old build report is retained under `docs/history/v0.3.0_BUILD_REPORT.md`.
 
-## Still unqualified or not implemented
+## Remaining boundaries
 
-Actual FL Studio operation, Windows setup on a user's machine, MIDI exchange,
-native plugin-menu automation, real plugin search curves, emergency hotkey behavior,
-and local-model/GPU performance remain unqualified. Slot/name checks cannot establish
-persistent plugin instance identity or detect all hidden state changes. A failed
-native display search can leave an intermediate setting; do not retry it automatically.
+The timing thresholds are heuristic and can refuse valid periodic/heavily processed
+music. Readiness does not establish sample/phase alignment, content identity, origin,
+causality or audible improvement. A review decision is a human annotation, not a DAW
+operation. Hard crashes during the narrow filesystem/database publication interval
+can leave orphan output records; they cannot trigger replay or automatic DAW writes.
 
-This is a companion development source release, not an EXE installer, a VST3, a
-replacement DAW, or a finished Ozone alternative. Automatic Playlist editing, plugin
-removal/reordering, live audio capture, and full adaptive AI mastering remain outside
-this milestone. The existing normalized parameter compatibility and v0.2.0 journal
-shape are retained. No project is saved automatically.
-
-Use a saved project copy for live qualification. Stop playback and recording before
-testing one small display-unit change, check the actual control manually, then
-approve any restore separately. See `docs/PLUGIN_WORKBENCH.md`,
-`docs/UPGRADE_v0.3.0.md`, and `docs/WINDOWS_ACCEPTANCE.md`.
+Windows end-user setup, virtual MIDI, native effect menus, actual plugin behavior,
+local models, GPU latency and physical monitoring remain unqualified. This is not a
+signed EXE or VST3. Automatic Playlist editing, plugin removal/reordering, live capture,
+automatic FL rendering, project autosave/rollback and adaptive AI mastering are not
+implemented. See `docs/AUDIO_REVIEW.md` and `docs/UPGRADE_v0.4.0.md`.

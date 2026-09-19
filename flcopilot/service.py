@@ -18,6 +18,8 @@ class Service:
         self.executor=Executor(adapter,self.journal)
         from .plugin_workbench import PluginWorkbench
         self.workbench=PluginWorkbench(self.executor)
+        from .review_store import ReviewStore
+        self.reviews=ReviewStore(self.assets.root/"reviews.sqlite3")
         self.jobs=Jobs(); self.audio_lock=threading.Lock()
         self.planner=LocalPlanner(endpoint)
         self.last_snapshot=None
@@ -40,6 +42,7 @@ class Service:
                 {"name":"Session inspection + mixer writes","status":"demo" if self.adapter.name=="demo" else "runtime checked","detail":"PostFader V10: fader, pan, name, mute, stereo separation and loaded effect parameters; approval plus independent readback."},
                 {"name":"Plugin workbench","status":"implemented","detail":"Bounded read-only parameter search with high-index pagination; observation-bound normalized or explicit dB/Hz/ms/percent previews. Display searches require stopped transport and separate approval."},
                 {"name":"Windows effect insertion","status":"experimental","detail":"Native Win32 Add menu only; isolated empty destination; manual fallback when not exposed."},
+                {"name":"Before / after audio review","status":"implemented","detail":"Imported paired exports, conservative timing checks, measured attenuation-only A/B, section deltas and saved human preferences. No live capture or causal-quality claim."},
                 {"name":"Audio analysis + WAV finishing","status":"implemented","detail":"Local exported audio; gated LUFS, oversampled-peak estimate, real A/B files."},
                 {"name":"MIDI sketches","status":"implemented","detail":"Deterministic file export; manual FL import."},
                 {"name":"AI planning","status":"optional","detail":"Local llama.cpp-compatible endpoint or MCP relay; no bundled weights."},
@@ -149,5 +152,32 @@ class Service:
         request=ScanRequest(track=track,slot=slot)
         with self.executor.mutex:
             return self.adapter.parameters(request.track,request.slot)
+    def review_audio(self,data):
+        import json
+        import shutil
+        from .review_contracts import ReviewRequest
+        from .review import build_review,link_evidence
+        request=ReviewRequest.model_validate_json(json.dumps(data))
+        linked=link_evidence(self.journal,request.linked_plan_id)
+        with self.audio_lock:
+            report,paths,folder=build_review(self.assets,request,self.assets.exports,self.executor.stop_event,linked)
+            records=[]
+            try:
+                records=self.assets.add_outputs([(p,None,"report" if p.suffix==".json" else "audio") for p in paths])
+                return self.reviews.add(report,records)
+            except Exception:
+                if records:
+                    self.assets.discard_outputs({r["id"] for r in records})
+                shutil.rmtree(folder,ignore_errors=True)
+                raise
+    def review_decision(self,data):
+        import json
+        from .review_contracts import ReviewDecision
+        return self.reviews.decide(ReviewDecision.model_validate_json(json.dumps(data)))
+    def review_get(self,data):
+        import json
+        from .review_contracts import ReviewID
+        request=ReviewID.model_validate_json(json.dumps(data))
+        return self.reviews.get(request.review_id)
     def close(self):
-        self.executor.stop_event.set(); self.jobs.close(); self.journal.close()
+        self.executor.stop_event.set(); self.jobs.close(); self.reviews.close(); self.journal.close()

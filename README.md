@@ -1,4 +1,4 @@
-# FL Studio AI Copilot — v0.3.0
+# FL Studio AI Copilot — v0.4.0
 
 **Windows-first local companion, development source release.** The code runs a local
 browser interface, a single guarded executor, an audio-finishing workspace, and an
@@ -12,9 +12,15 @@ simulator process checks. Neither is live FL Studio, virtual MIDI, native plugin
 or local-model qualification. The record is in [BUILD_REPORT.md](BUILD_REPORT.md).
 Screenshots are explicitly simulated; audio fixtures are synthetic.
 
-**New in v0.3:** a [Plugin workbench](docs/PLUGIN_WORKBENCH.md) for bounded,
+**New in v0.4:** [Before/after audio review](docs/AUDIO_REVIEW.md). Pair two imported
+exports, check matching format and timing evidence, render measured level-matched
+A/B WAVs, inspect same-position measurement windows, and save your own listening
+preference. No automatic FL render, recording, correction, or artistic winner is
+claimed. See [upgrade instructions](docs/UPGRADE_v0.4.0.md).
+
+**Added in v0.3:** a [Plugin workbench](docs/PLUGIN_WORKBENCH.md) for bounded,
 read-only parameter discovery and observation-bound changes in displayed units.
-See the [upgrade guide](docs/UPGRADE_v0.3.0.md) for existing installations.
+The [v0.3 upgrade notes](docs/UPGRADE_v0.3.0.md) remain available for historical context.
 
 ## Start on Windows
 
@@ -62,7 +68,36 @@ Receipts are committed to SQLite. If a reply is lost after dispatch, no automati
 retry occurs; subsequent writes remain blocked until a fresh inspection and explicit
 acknowledgment. Acknowledgment is not rollback. No project is automatically saved.
 
-### New in v0.3: plugin workbench
+### New in v0.4: before / after audio review
+
+Use **Audio lab** to import matching before/after exports, then open **Audio review**.
+Confirm that the song range and export settings match. The companion checks sample
+rate, channels, exact frame count, finite loudness, and conservative timing evidence.
+It does not shift, trim or resample mismatches. Ambiguous or offset pairs receive a
+report with blockers, not audition files or a fabricated alignment guarantee.
+
+For a ready pair, it creates `A_Baseline_Matched.wav`, `B_Candidate_Matched.wav`, and
+`Review_Report.json`. Both float WAVs are attenuation-only, reread after writing,
+and checked within **0.1 LU** of their common measured loudness and under a -1 dB
+oversampled-peak estimate. No EQ or limiter is inserted. The player switches A/B at
+approximately the same position, but is not gapless, sample-synchronous or blind ABX.
+Global and 10–60 second window deltas are measurements, not improvements or scores.
+
+Reviews persist in a separate local SQLite store. Your preference and notes are
+revision-checked human decisions; neither they nor the optional association with a
+verified journal run authorize DAW changes. The immutable exported report excludes
+local paths, source filenames, raw session tokens and private plan contents, but
+contains your supplied review title and audio hashes. Decisions are kept separately
+in local history; the original report file is not silently rewritten.
+
+Three additional MCP tools (`copilot_review_audio`, `copilot_reviews`, and
+`copilot_review_get`) use the same running app, bringing the relay to **17 tools**.
+No MCP tool chooses a listening preference for you. Numeric `1` is now refused as
+approval or export-range confirmation; only explicit boolean `true` is accepted.
+The complete [review guide](docs/AUDIO_REVIEW.md) describes timing heuristics,
+uncertainty, publication/crash boundaries, and the pending live-render workflow.
+
+### Added in v0.3: plugin workbench
 
 Select an actually loaded mixer effect, search its observed parameter names and
 displays, and continue through bounded raw-index windows instead of stopping at
@@ -184,7 +219,7 @@ Weights and a llama.cpp executable are not bundled or downloaded automatically.
 The managed option avoids a separately maintained Ollama service, but is not a
 self-contained preinstalled ML distribution.
 
-An existing MCP-capable coding/assistant client can use the fourteen-tool stdio relay:
+An existing MCP-capable coding/assistant client can use the seventeen-tool stdio relay:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\write_mcp_config.py

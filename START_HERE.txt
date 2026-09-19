@@ -1,55 +1,54 @@
-FL STUDIO AI COPILOT 0.3.0 — CUMULATIVE DEVELOPMENT SOURCE
+FL STUDIO AI COPILOT 0.4.0 — CUMULATIVE DEVELOPMENT SOURCE
 
-NEW: PLUGIN WORKBENCH
-Search actual exposed effect parameters, including padded high-index spaces.
-Choose an observed control and preview either a normalized target or an explicit
-dB / Hz / ms / percent target with tolerance. Display searches move intermediate
-values, so stop playback AND recording before preparing or applying them.
-Every change still needs the exact Session approval. Verified changes can receive
-a separate restore preview; this is not automatic Undo or project rollback.
+NEW: BEFORE / AFTER AUDIO REVIEW
+Import matching before/after bounces in Audio lab, then open Audio review.
+Confirm the same song range and export settings. The app checks format and timing
+without trimming, shifting or resampling. Mismatches/uncertainty get a blocker
+report; ready pairs get real level-matched A/B WAVs and measurement reports.
+Listen, then save your own preference and notes. No DAW command is applied.
 
-NEW INSTALL
-1. Extract the entire ZIP or clone the repository into a normal folder.
-2. Install 64-bit Python 3.13 with the py launcher. Run SETUP_WINDOWS.cmd.
-   First-time dependency installation needs internet access.
-3. Run START_DEMO.cmd. Mixer/control data is simulated; audio/MIDI exports are real.
-4. Open Plugin workbench. Demo insert 6 has deliberately fictional controls at
-   indices 129, 2049 and 4097 for testing pagination and unit conversion.
+INSTALL / UPGRADE
+Use 64-bit Python 3.13. Extract the entire package; run SETUP_WINDOWS.cmd.
+First-time dependency installation needs internet access. Run START_DEMO.cmd
+first. Demo mixer controls are simulated; imported audio and MIDI exports are real.
+For an existing Git checkout: close the companion/MCP clients, run
+  git pull --ff-only
+  .\SETUP_WINDOWS.cmd
+  .\START_DEMO.cmd
+For ZIP upgrades, extract into a NEW folder and copy only local-settings.json.
+Do not copy .venv, server.json or locks. Existing workspace/audio/journal data
+remain in place. The new review database is separate; bridge pins are unchanged.
 
-UPGRADE FROM 0.2
-Close the old app and MCP clients. Pull main in an existing checkout and rerun
-setup, or extract into a NEW folder and copy only local-settings.json.
-Do not copy .venv, server.json, tokens or process locks. The default workspaces
-and dependency pins are unchanged. Existing imports, exports and journal history
-remain available. See docs/UPGRADE_v0.3.0.md.
+REVIEW YOUR EXPORTS
+1. Export before and after from exactly the same FL song range and settings.
+2. Import both in Audio lab. Open Audio review and select baseline/candidate.
+3. Confirm matching range/settings; optionally associate a fully verified run.
+   The association cannot prove which FL session produced the audio.
+4. Analyze. Ready pairs produce A_Baseline_Matched.wav, B_Candidate_Matched.wav,
+   and Review_Report.json. Matching uses attenuation only, no EQ or limiting.
+5. Listen using A/B switching or the saved WAVs; record a preference explicitly.
+   Browser switching preserves approximate position, not phase-accurate alignment.
 
-CONNECT TO FL
-Configure one trusted bidirectional virtual MIDI endpoint. With FL and other
-PostFader clients closed, use CONNECT_FL.cmd for the guided bridge deployment.
-In FL MIDI settings, enable the input, select Universal Bridge, use matching
-input/output port numbers, and reload the script. No MIDI driver is bundled.
-Run START_LIVE.cmd, then Connection & setup > Check connection and Inspect session.
-Use a SAVED PROJECT COPY for the existing 1 dB test and its separately approved
-restore before trying effect parameters. Load the effect manually in FL when the
-experimental native-menu adapter is unavailable.
+CONNECT TO FL (UNCHANGED)
+Configure a trusted bidirectional virtual MIDI endpoint. Close FL/other PostFader
+clients; use CONNECT_FL.cmd if bridge deployment is needed. In FL MIDI settings,
+use Universal Bridge with matching input/output port numbers and reload the script.
+START_LIVE.cmd > Connection & setup > Check connection > Inspect session.
+Pinned PostFader requires FL Studio 2026 build 26.1.3.5336+ and scripting API 44+.
+No MIDI driver is bundled. Use a SAVED PROJECT COPY for the existing 1 dB control
+test and its separately approved restore before larger operations.
 
-PLUGIN WORKFLOW
-Inspect > Plugin workbench > choose a loaded effect > Scan this window.
-Search covers only that index window. Continue with Next window while more remain.
-Select a control > choose target mode/value > Prepare change preview.
-Review Session's exact target and approve in Assist/Finish. Stop playback and
-recording before displayed-unit searches. Run journal > Preview restore requires
-another approval. Never retry an uncertain operation without inspecting FL.
+The Plugin workbench still supports high-index discovery and explicit-unit
+previews. Stop playback/recording before display searches and approve separately.
+The MCP relay now exposes 17 tools. Approval and export-range confirmation require
+literal boolean true; numeric 1 is refused. No tool chooses a listening winner.
 
-COMPATIBILITY AND LIMITS
-Pinned PostFader 10.0.0 requires FL Studio 2026, 26.1.3.5336+ and MIDI API 44+.
-The relay now has 14 tools and still uses the single running companion.
-Core/HTTP/audio/contract and simulator-process tests are not live FL validation.
-Native Windows installation, virtual MIDI exchange, actual plugin control/loading
-and local-model performance remain unqualified. This is not a signed EXE or VST3,
-an autonomous mastering engineer, or a guarantee of unchanged hidden plugin state.
-Automatic Playlist editing, live audio capture, plugin removal/reordering, autosave
-and guaranteed whole-project rollback are not implemented.
+LIMITS
+This is source, not a signed EXE/VST3. No live audio capture, automatic FL render,
+Playlist editing, plugin removal/reordering or full adaptive AI mastering exists
+in this release. Timing evidence and LUFS/peak measurements are not proof that a
+candidate sounds better. Native FL, MIDI, real-plugin and GPU behavior still need
+host validation. The same source is tested with synthetic audio, not your projects.
 
-Keep the console open. Stop blocks later work, not an in-flight command.
-Read README.md, BUILD_REPORT.md and docs/PLUGIN_WORKBENCH.md before live use.
+Keep the console open. Stop blocks later work, not an in-flight native command.
+Read README.md, BUILD_REPORT.md and docs/AUDIO_REVIEW.md before live use.

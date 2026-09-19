@@ -26,7 +26,12 @@ def call(server,path,data=None,token=True,origin=None,host=None):
     if origin:headers["Origin"]=origin
     if host:headers["Host"]=host
     r=urllib.request.Request(server.origin+path,headers=headers,data=json.dumps(data).encode() if data is not None else None)
-    return urllib.request.urlopen(r,timeout=10)
+    try:
+        return urllib.request.urlopen(r,timeout=10)
+    except urllib.error.HTTPError as error:
+        # Tests retain the exception for status assertions; close its response now.
+        error.close()
+        raise
 
 def poll(server,result):
     for _ in range(100):
@@ -89,7 +94,7 @@ def test_mcp_initialize_and_tools(app):
     s,srv,path=app
     r=handle(path,{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}})
     assert r["result"]["serverInfo"]["name"]=="fl-studio-ai-copilot"
-    assert len(handle(path,{"jsonrpc":"2.0","id":2,"method":"tools/list"})["result"]["tools"])==14
+    assert len(handle(path,{"jsonrpc":"2.0","id":2,"method":"tools/list"})["result"]["tools"])==17
     assert handle(path,{"jsonrpc":"2.0","method":"notifications/initialized"}) is None
 
 def test_mcp_uses_same_app_executor(app):
@@ -199,3 +204,56 @@ def test_workbench_script_has_csp_and_no_secret(app):
 def test_legacy_parameter_endpoint_rejects_bad_slot(app):
     _,srv,_=app
     with pytest.raises(urllib.error.HTTPError):call(srv,'/api/parameters?track=1&slot=10')
+
+
+@pytest.mark.parametrize('route,data',[
+    ('review-audio',{'baseline':'a'*32,'candidate':'b'*32,'confirm_same_range':True}),
+    ('review-get',{'review_id':'a'*32}),
+    ('review-decision',{'review_id':'a'*32,'expected_revision':1,'decision':'prefer_candidate'})])
+def test_audio_review_routes_require_auth(app,route,data):
+    _,srv,_=app
+    with pytest.raises(urllib.error.HTTPError) as error:call(srv,'/api/'+route,data,token=False)
+    assert error.value.code==403
+
+
+def test_review_history_requires_auth_and_is_readonly(app):
+    s,srv,_=app
+    with pytest.raises(urllib.error.HTTPError):call(srv,'/api/reviews',token=False)
+    assert json.load(call(srv,'/api/reviews'))==[] and not s.adapter.calls
+
+
+def test_audio_review_http_mcp_and_decision_lifecycle(app):
+    import numpy as np
+    import soundfile as sf
+    s,srv,workspace=app;ids=[]
+    y=np.random.default_rng(412).normal(size=(24000,2))*.03
+    for value in (y,y*.5):
+        blob=io.BytesIO();sf.write(blob,value,8000,format='WAV',subtype='FLOAT');raw=blob.getvalue()
+        ids.append(s.assets.import_stream(io.BytesIO(raw),len(raw),'fixture.wav')['id'])
+    review=poll(srv,tool_call(workspace,'copilot_review_audio',dict(baseline=ids[0],candidate=ids[1],confirm_same_range=True)))
+    assert review['report']['status']=='ready' and not s.adapter.calls
+    assert len(tool_call(workspace,'copilot_reviews',{}))==1
+    assert tool_call(workspace,'copilot_review_get',{'review_id':review['review_id']})==review
+    choice=json.load(call(srv,'/api/review-decision',dict(review_id=review['review_id'],expected_revision=1,
+        decision='prefer_candidate',note='Explicit listening choice')))
+    assert choice['revision']==2 and choice['report']==review['report']
+    with pytest.raises(ValueError):tool_call(workspace,'copilot_review_decision',{'decision':'prefer_candidate'})
+    assert not s.adapter.calls and not s.adapter.writes
+    for file in review['files']:
+        with call(srv,'/api/file/'+file['id']) as response:assert len(response.read())>10
+
+
+def test_review_invalid_confirm_and_path_rejected_before_analysis(app):
+    _,srv,workspace=app
+    with pytest.raises(ValueError):tool_call(workspace,'copilot_review_audio',
+        {'baseline':'a'*32,'candidate':'b'*32,'confirm_same_range':1})
+    with pytest.raises(ValueError):tool_call(workspace,'copilot_review_get',{'review_id':'../../private'})
+    with pytest.raises(urllib.error.HTTPError):call(srv,'/api/review-get',{'review_id':'../../private'})
+
+
+def test_review_static_asset_is_served_with_csp(app):
+    _,srv,_=app
+    with call(srv,'/review.js',token=False) as response:
+        source=response.read().decode()
+        assert 'review-audio' in source and srv.token not in source
+        assert "script-src 'self'" in response.headers['Content-Security-Policy']

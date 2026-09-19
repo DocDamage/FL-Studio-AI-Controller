@@ -1,4 +1,4 @@
-# Known limitations — v0.3.0
+# Known limitations — v0.4.0
 
 This release implements a useful guarded foundation, not the entire proposed DAW
 agent. The distinction is intentional and visible in the capability ledger.
@@ -62,3 +62,11 @@ agent. The distinction is intentional and visible in the capability ledger.
   in-flight bridge call. Stopped-transport checks reduce risk but cannot prevent
   concurrent manual playback or hidden plugin changes. Reachability, normalized
   getter freshness, whole-preset restoration and audible improvement are not promised.
+
+- Audio review analyzes imported exports, not live FL output. Equal-format and
+  timing checks can refuse valid periodic or heavily changed audio. A ready pair
+  is not sample/phase alignment, source provenance, causal proof or a quality score.
+  Playback switching is approximate, not gapless or blind ABX. Human decisions
+  remain separate annotations. Crash-time orphan exports can remain during a
+  narrow publication interval; no DAW replay or automatic user-file deletion occurs.
+  See AUDIO_REVIEW.md for the exact heuristics and persistence boundary.

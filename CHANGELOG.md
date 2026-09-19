@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 — September 19, 2026
+
+Added imported before/after audio review with format and conservative timing checks,
+measured attenuation-only A/B WAVs, global/elapsed-window deltas, persistent reviews
+and revision-checked human preferences. Uncertain or mismatched pairs publish a
+blocker report instead of auto-trimmed audition files. Optional verified-run links
+are associations only, not audio provenance or causal proof.
+
+Added three MCP tools (17 total), batch output registration, and browser A/B controls.
+Only literal boolean true now satisfies approval and export-range confirmation.
+The HTTP test helper now closes error responses explicitly. Preserved existing
+control locks, PostFader pins, audio mastering and MIDI workflows.
+
+Validation: 363 tests passed locally with warnings as errors; 35 existing DOM checks
+and 16 new review UI checks; real companion/MCP/audio-review process checks.
+Browser navigation was policy-blocked; UI used documented direct-Service fallback.
+Live FL rendering, capture, plugin behavior and Windows end-user setup remain untested.
+
 ## 0.3.0 — September 19, 2026
 
 Added the plugin workbench: read-only padded-parameter search, bounded pagination,

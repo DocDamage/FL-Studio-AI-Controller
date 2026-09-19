@@ -25,8 +25,8 @@ that digest. Pre-dispatch state is compared to the preview, not substituted with
 a fresher unapproved state. After one verified change, its readback becomes the
 baseline only for later operations in that same approved plan.
 
-The five control types are volume, pan, rename, effect parameter, and isolated
-experimental effect loading. Master/track/parameter locks are enforced centrally.
+Control types include volume, pan, rename, mute, stereo separation, normalized
+and display-unit effect parameters, and isolated experimental effect loading. Master/track/parameter locks are enforced centrally.
 Tempo, notes, and arrangement are not writable. Fader moves are capped at 12 dB;
 maximum plan length is 32; insertion must be the only operation in its plan.
 
@@ -132,3 +132,17 @@ normalized getters. Restore uses original displayed units and the same executor.
 New authenticated async routes and MCP tools call this service; no alternate writer
 or MIDI connection exists. The browser treats plugin text as data and invalidates
 its observation when selection/session refreshes race a scan.
+
+## v0.4 imported audio review
+
+`review_contracts`, `review_alignment` and `review` accept only registered audio
+IDs, read/measure imported bounces, check timing evidence and create a separate
+attenuation-only A/B pair. They call no DAW adapter. Work uses the existing audio
+lock; optional journal associations read historical receipts, not live state.
+
+`review_store` owns a separate SQLite database for immutable reports and human
+decision revisions. Asset groups publish atomically in their manifest, but the
+filesystem and SQLite are not one transaction; a hard crash can leave orphan
+outputs without a published review. No recovery path can apply a DAW command.
+Three read/analysis MCP tools are added; human listening choices stay outside the
+MCP tool surface. The existing executor approval now rejects numeric-1 coercion.

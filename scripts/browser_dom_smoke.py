@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix='flcopilot-dom-') as root:
         browser=p.chromium.launch(executable_path=__import__('os').environ.get('FLCOPILOT_BROWSER') or __import__('shutil').which('chromium'),headless=True,args=['--no-sandbox'])
         page=browser.new_page(viewport={'width':1512,'height':1100},device_scale_factor=1)
         errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-        html=(P/'flcopilot/web/index.html').read_text().replace('<link rel="stylesheet" href="/style.css">','').replace('<script src="/app.js" defer></script>','').replace('<script src="/workbench.js" defer></script>','')
+        html=(P/'flcopilot/web/index.html').read_text().replace('<link rel="stylesheet" href="/style.css">','').replace('<script src="/app.js" defer></script>','').replace('<script src="/workbench.js" defer></script>','').replace('<script src="/review.js" defer></script>','')
         page.set_content(html)
         page.add_style_tag(content=(P/'flcopilot/web/style.css').read_text())
         page.expose_function('__nativeRequest',request)
@@ -142,7 +142,7 @@ with tempfile.TemporaryDirectory(prefix='flcopilot-dom-') as root:
         assert page.locator('#wb-value').input_value()=='1000'
         page.locator('#wb-value').fill('750')
         page.evaluate('window.scrollTo(0,0)')
-        page.screenshot(path=str(evidence/'Plugin_Workbench_v030.png'),full_page=True)
+        page.screenshot(path=str(evidence/'Plugin_Workbench_v040.png'),full_page=True)
         page.locator('#wb-next').click()
         page.wait_for_function('wbObservation && wbObservation.start===2560')
         assert 'No matching named controls' in page.locator('#wb-rows').inner_text()
@@ -210,12 +210,12 @@ with tempfile.TemporaryDirectory(prefix='flcopilot-dom-') as root:
         page.locator('[data-tab="plugins"]').click()
         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
         print("DOM: Collecting final report",flush=True)
-        report={'app_version':service.status()['version'],'checks':['Simulator banner','Inspect-mode approval blocked','Prompt preview','Assist-mode approval','Actual simulator state readback','Real MIDI creation','Real audio upload through browser file object','Real loudness analysis','Real master + four exports','History rendering','Twelve capability labels','Stop/reset','390px page overflow check','Explicit mute preview and application','Stereo-separation preview and application','Verified journal restore preview','Separately approved restore readback','Fourteen diagnostic checks','Simulator cannot qualify host','Privacy-filtered report export UI','1 dB control-test preview','Approved 1 dB reduction','Separately approved test restore','Read-only plugin scan','Honest partial coverage','Display-target preview with units and tolerance','Approved display change','Separately approved display restore','High-index frequency and kHz conversion','Next-window search with empty matches','End-of-map pagination disabled','Seconds-to-ms conversion','Normalized alternative preview only','Plugin names escaped as data','390px plugin-workbench overflow check'],
+        report={'app_version':service.status()['version'],'checks':['Simulator banner','Inspect-mode approval blocked','Prompt preview','Assist-mode approval','Actual simulator state readback','Real MIDI creation','Real audio upload through browser file object','Real loudness analysis','Real master + four exports','History rendering',f"{len(service.capabilities()['features'])} capability labels",'Stop/reset','390px page overflow check','Explicit mute preview and application','Stereo-separation preview and application','Verified journal restore preview','Separately approved restore readback','Fourteen diagnostic checks','Simulator cannot qualify host','Privacy-filtered report export UI','1 dB control-test preview','Approved 1 dB reduction','Separately approved test restore','Read-only plugin scan','Honest partial coverage','Display-target preview with units and tolerance','Approved display change','Separately approved display restore','High-index frequency and kHz conversion','Next-window search with empty matches','End-of-map pagination disabled','Seconds-to-ms conversion','Normalized alternative preview only','Plugin names escaped as data','390px plugin-workbench overflow check'],
             'page_errors':errors,'environment':'Linux Chromium 1512px and 390px; in-memory DOM harness calling real Service methods',
             'network_transport':'Fetch replaced by test harness. HTTP endpoints separately tested in pytest.',
             'browser_navigation_limit':'Ordinary localhost navigation was blocked by environment administrator policy; no policy was modified.',
             'live_fl_tested':False,'audio_fixture':'Synthetic generated sine mixture, not user audio'}
-        (evidence/'browser_dom_report_v030.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+        (evidence/'browser_dom_report_v040.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
         browser.close()
         if errors:sys.exit(1)
     service.close()

@@ -96,7 +96,7 @@ def main(argv=None):
             atomic_json(descriptor,{"pid":os.getpid(),"origin":server.origin,"token":server.token})
             if os.name!="nt": descriptor.chmod(0o600)
             url=server.origin+"/#"+server.token
-            print("FL Studio AI Copilot 0.3.0 | "+("SIMULATOR" if a.demo else "LIVE adapter / local audio"))
+            print("FL Studio AI Copilot 0.4.0 | "+("SIMULATOR" if a.demo else "LIVE adapter / local audio"))
             print("Open this private local URL:",url)
             print("Keep this console open. Ctrl+C exits. "+hotkey.status)
             if not a.no_browser: webbrowser.open(url)

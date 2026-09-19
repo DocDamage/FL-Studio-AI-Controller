@@ -50,13 +50,30 @@ class AssetStore:
         except Exception:
             path.unlink(missing_ok=True); raise
     def add_output(self,path,name=None,kind="audio"):
-        path=Path(path).resolve()
-        if not path.is_relative_to(self.exports) or not path.is_file(): raise PlanError("Output must exist inside exports")
-        asset=uuid.uuid4().hex
-        record={"id":asset,"name":name or path.name,"path":str(path.relative_to(self.root)),
-            "sha256":file_hash(path),"kind":kind}
-        with self.lock: self.data[asset]=record; atomic_json(self.manifest,self.data)
-        return record
+        return self.add_outputs([(path, name, kind)])[0]
+    def add_outputs(self,items):
+        """Register a completed group atomically; failure publishes no partial group."""
+        records=[]
+        for path,name,kind in items:
+            path=Path(path).resolve()
+            if not path.is_relative_to(self.exports) or not path.is_file():
+                raise PlanError("Output must exist inside exports")
+            asset=uuid.uuid4().hex
+            records.append({"id":asset,"name":name or path.name,"path":str(path.relative_to(self.root)),
+                            "sha256":file_hash(path),"kind":kind})
+        with self.lock:
+            updated={**self.data,**{r["id"]:r for r in records}}
+            atomic_json(self.manifest,updated)
+            self.data=updated
+        return records
+    def discard_outputs(self,ids):
+        """Internal failed-publication cleanup; never an API to delete user inputs."""
+        with self.lock:
+            if any(self.data.get(i,{}).get("kind")=="input" for i in ids):
+                raise PlanError("Imported sources cannot be discarded by output cleanup")
+            updated={i:r for i,r in self.data.items() if i not in ids}
+            atomic_json(self.manifest,updated)
+            self.data=updated
     def resolve(self,asset,verify=True):
         with self.lock: record=self.data.get(asset)
         if not record: raise PlanError("Unknown imported asset")

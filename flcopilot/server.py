@@ -20,7 +20,7 @@ class LocalServer(ThreadingHTTPServer):
         self.origin=f"http://127.0.0.1:{self.port}"
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="FLCopilot/0.3"
+    server_version="FLCopilot/0.4"
     protocol_version="HTTP/1.0"
     def setup(self):
         super().setup(); self.connection.settimeout(30)
@@ -65,17 +65,18 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             path=urlsplit(self.path).path
-            if path in ("/","/app.js","/workbench.js","/style.css"):
+            if path in ("/","/app.js","/workbench.js","/review.js","/style.css"):
                 self._secure(auth=False)
-                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/style.css":"style.css"}[path]
+                name={"/":"index.html","/app.js":"app.js","/workbench.js":"workbench.js","/review.js":"review.js","/style.css":"style.css"}[path]
                 data=files("flcopilot").joinpath("web",name).read_bytes()
-                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
+                kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","workbench.js":"text/javascript; charset=utf-8","review.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
                 self._headers(200,kind,len(data)); self.wfile.write(data); return
             self._secure()
             s=self.server.service; q=parse_qs(urlsplit(self.path).query)
             if path=="/api/status": return self._json(s.status())
             if path=="/api/capabilities": return self._json(s.capabilities())
             if path=="/api/history": return self._json(s.journal.history())
+            if path=="/api/reviews": return self._json(s.reviews.history())
             if path=="/api/assets": return self._json(s.assets.list())
             if path=="/api/parameters": return self._json(s.parameters(int(q["track"][0]),int(q["slot"][0])))
             if path.startswith("/api/jobs/"): return self._json(s.jobs.get(path.rsplit("/",1)[-1]))
@@ -121,6 +122,9 @@ class Handler(BaseHTTPRequestHandler):
             elif path=="/api/compare":
                 if set(data)!={"a","b"}: raise PlanError("Expected baseline a and candidate b")
                 result=s.jobs.submit("Comparing audio measurements",lambda:s.compare(data["a"],data["b"]))
+            elif path=="/api/review-audio": result=s.jobs.submit("Checking exports and rendering level-matched A/B",lambda:s.review_audio(data))
+            elif path=="/api/review-get": result=s.review_get(data)
+            elif path=="/api/review-decision": result=s.review_decision(data)
             elif path=="/api/midi": result=s.create_midi(data)
             elif path=="/api/stop": result=s.executor.stop()
             elif path=="/api/reset-stop":
