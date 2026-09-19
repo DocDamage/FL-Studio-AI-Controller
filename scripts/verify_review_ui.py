@@ -47,9 +47,16 @@ def main():
                 elif path=='reviews':out=service.reviews.history()
                 elif path=='review-get':out=service.review_get(data)
                 elif path=='review-decision':out=service.review_decision(data)
+                elif path=='review-blind-history':out=service.review_blind_history(data)
+                elif path=='review-blind-start':out=service.jobs.submit('Start blind trial',lambda:service.review_blind_start(data))
+                elif path=='review-blind-submit':out=service.jobs.submit('Submit blind trial',lambda:service.review_blind_submit(data))
                 elif path=='inspect':out=service.jobs.submit('Inspect simulator',service.inspect)
                 elif path=='review-audio':out=service.jobs.submit('Analyze pair',lambda:service.review_audio(data))
                 elif path.startswith('jobs/'):out=service.jobs.get(path[5:])
+                elif path.startswith('review-blind-file/'):
+                    import base64
+                    _,trial,sample=path.split('/')
+                    return {'status':200,'binary':base64.b64encode(service.review_blind_file(trial,sample).read_bytes()).decode()}
                 elif path.startswith('file/'):
                     import base64
                     return {'status':200,'binary':base64.b64encode(service.assets.resolve(path[5:]).read_bytes()).decode()}
@@ -105,6 +112,22 @@ def main():
                 assert page.locator('#review-choice').input_value()=='undecided'
                 assert not service.adapter.calls
                 checks.extend(['Global before/after deltas','Elapsed-time window deltas','No automatic listening preference','No DAW writes'])
+                page.locator('#review-blind-start').click()
+                page.wait_for_function('reviewBlind && reviewBlind.status==="open"')
+                assert page.evaluate('"mapping" in reviewBlind') is False
+                assert 'answer still hidden' in page.locator('#review-blind-history').inner_text()
+                checks.append('Blind mapping stays server-side before answer')
+                page.locator('#review-blind-play-x').click()
+                page.wait_for_function('document.querySelector("#review-blind-player").readyState>=1 && !document.querySelector("#review-blind-player").paused')
+                assert page.locator('#review-blind-now').inner_text()=='X · hidden identity'
+                checks.append('Authenticated blinded WAV playback')
+                page.locator('#review-blind-unsure').click()
+                page.wait_for_function('reviewBlind && reviewBlind.status==="completed"')
+                assert page.locator('#review-blind-result').is_visible()
+                assert 'Reference A was' in page.locator('#review-blind-result').inner_text()
+                assert page.locator('#review-choice').input_value()=='undecided'
+                assert not service.adapter.calls
+                checks.extend(['Blind answer reveals only after submission','Blind trial does not choose a preference or write the DAW'])
                 page.locator('#review-choice').select_option('prefer_baseline');page.locator('#review-note').fill('Keep the original drum punch.')
                 page.locator('#review-save-choice').click();page.wait_for_function('reviewCurrent.revision===2')
                 page.locator('.review-open').first.click();page.wait_for_function('reviewCurrent.revision===2')

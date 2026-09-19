@@ -209,7 +209,10 @@ def test_legacy_parameter_endpoint_rejects_bad_slot(app):
 @pytest.mark.parametrize('route,data',[
     ('review-audio',{'baseline':'a'*32,'candidate':'b'*32,'confirm_same_range':True}),
     ('review-get',{'review_id':'a'*32}),
-    ('review-decision',{'review_id':'a'*32,'expected_revision':1,'decision':'prefer_candidate'})])
+    ('review-decision',{'review_id':'a'*32,'expected_revision':1,'decision':'prefer_candidate'}),
+    ('review-blind-start',{'review_id':'a'*32}),
+    ('review-blind-history',{'review_id':'a'*32}),
+    ('review-blind-submit',{'trial_id':'a'*32,'guess':'a'})])
 def test_audio_review_routes_require_auth(app,route,data):
     _,srv,_=app
     with pytest.raises(urllib.error.HTTPError) as error:call(srv,'/api/'+route,data,token=False)
@@ -234,6 +237,16 @@ def test_audio_review_http_mcp_and_decision_lifecycle(app):
     assert review['report']['status']=='ready' and not s.adapter.calls
     assert len(tool_call(workspace,'copilot_reviews',{}))==1
     assert tool_call(workspace,'copilot_review_get',{'review_id':review['review_id']})==review
+    blind=poll(srv,json.load(call(srv,'/api/review-blind-start',{'review_id':review['review_id']})))
+    assert blind['status']=='open' and not blind['answer_revealed'] and 'mapping' not in blind
+    history=json.load(call(srv,'/api/review-blind-history',{'review_id':review['review_id']}))
+    assert history==[blind] and 'x_matches' not in history[0]
+    with call(srv,f"/api/review-blind-file/{blind['trial_id']}/x") as response:
+        assert response.headers['Content-Type']=='audio/wav' and len(response.read())>100
+    revealed=poll(srv,json.load(call(srv,'/api/review-blind-submit',
+        {'trial_id':blind['trial_id'],'guess':'unsure'})))
+    assert revealed['answer_revealed'] and revealed['correct'] is None and 'mapping' in revealed
+    assert s.review_get({'review_id':review['review_id']})['decision']=='undecided'
     choice=json.load(call(srv,'/api/review-decision',dict(review_id=review['review_id'],expected_revision=1,
         decision='prefer_candidate',note='Explicit listening choice')))
     assert choice['revision']==2 and choice['report']==review['report']
@@ -241,6 +254,16 @@ def test_audio_review_http_mcp_and_decision_lifecycle(app):
     assert not s.adapter.calls and not s.adapter.writes
     for file in review['files']:
         with call(srv,'/api/file/'+file['id']) as response:assert len(response.read())>10
+
+
+def test_blind_audio_route_requires_auth_and_strict_path(app):
+    _,srv,_=app
+    with pytest.raises(urllib.error.HTTPError) as error:
+        call(srv,'/api/review-blind-file/'+'a'*32+'/x',token=False)
+    assert error.value.code==403
+    with pytest.raises(urllib.error.HTTPError) as error:
+        call(srv,'/api/review-blind-file/'+'a'*32+'/baseline')
+    assert error.value.code==404
 
 
 def test_review_invalid_confirm_and_path_rejected_before_analysis(app):

@@ -82,6 +82,14 @@ class Handler(BaseHTTPRequestHandler):
             if path=="/api/assets": return self._json(s.assets.list())
             if path=="/api/parameters": return self._json(s.parameters(int(q["track"][0]),int(q["slot"][0])))
             if path.startswith("/api/jobs/"): return self._json(s.jobs.get(path.rsplit("/",1)[-1]))
+            blind=re.fullmatch(r"/api/review-blind-file/([a-f0-9]{32})/(a|b|x)",path)
+            if blind:
+                trial_id,sample=blind.groups();target=s.review_blind_file(trial_id,sample)
+                self._headers(200,"audio/wav",target.stat().st_size,
+                    {"Content-Disposition":f'inline; filename="Blind_{sample.upper()}.wav"'})
+                with target.open("rb") as f:
+                    while chunk:=f.read(1024*1024): self.wfile.write(chunk)
+                return
             if path.startswith("/api/file/"):
                 asset=path.rsplit("/",1)[-1]; target=s.assets.resolve(asset)
                 kind=mimetypes.guess_type(target.name)[0] or "application/octet-stream"
@@ -134,6 +142,9 @@ class Handler(BaseHTTPRequestHandler):
                 result=s.jobs.submit("Comparing audio measurements",lambda:s.compare(data["a"],data["b"]))
             elif path=="/api/review-audio": result=s.jobs.submit("Checking exports and rendering level-matched A/B",lambda:s.review_audio(data))
             elif path=="/api/review-waveform": result=s.jobs.submit("Verifying and reading audition waveforms",lambda:s.review_waveform(data))
+            elif path=="/api/review-blind-start": result=s.jobs.submit("Verifying review and creating blind A/B/X trial",lambda:s.review_blind_start(data))
+            elif path=="/api/review-blind-submit": result=s.jobs.submit("Verifying review and recording blind A/B/X answer",lambda:s.review_blind_submit(data))
+            elif path=="/api/review-blind-history": result=s.review_blind_history(data)
             elif path=="/api/review-get": result=s.review_get(data)
             elif path=="/api/review-decision": result=s.review_decision(data)
             elif path=="/api/midi": result=s.create_midi(data)

@@ -50,8 +50,10 @@ player, disables repeat, and invalidates an in-flight waveform response.
 
 Playback uses the browser's media element. Loop boundaries and side switches are
 **approximate, not gapless or sample-synchronous**; browser scheduling/background
-throttling can delay them. There is no crossfade, click-removal, ABX test, automatic
-alignment, beat detection or tempo/key edit. Canvas repainting is limited to roughly
+throttling can delay them. There is no crossfade, click-removal, automatic
+alignment, beat detection or tempo/key edit. Waveform controls themselves are not
+blind; the separate [blind A/B/X check](BLIND_ABX_REVIEW.md) hides audio identity
+server-side until the human answers. Canvas repainting is limited to roughly
 15 fps during foreground playback; the separate loop check runs on animation and
 media time updates. No audio-driver latency or physical listening test is claimed.
 
